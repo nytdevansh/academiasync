@@ -17,12 +17,7 @@ import CompetencyRecord from '../models/CompetencyRecord';
 
 const hash = async (pw: string) => bcrypt.hash(pw, await bcrypt.genSalt(10));
 
-const seed = async () => {
-  const uri = process.env.MONGODB_ATLAS_URI;
-  if (!uri) { console.error('❌ MONGODB_ATLAS_URI not set in .env'); process.exit(1); }
-
-  await mongoose.connect(uri);
-  console.log('✅ Connected to MongoDB\n');
+export const seedData = async () => {
 
   // Clear existing data
   console.log('🗑  Clearing existing seed data...');
@@ -196,18 +191,19 @@ const seed = async () => {
   ]);
 
   console.log('\n✅ Seed complete!\n');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('Demo Credentials:');
-  console.log('  admin@academiasync.edu    Admin@123   (Administrator)');
-  console.log('  hod.cse@academiasync.edu  Hod@123     (HOD - CSE)');
-  console.log('  dean@academiasync.edu     Dean@123    (Dean)');
-  console.log('  hr@academiasync.edu       Hr@123      (HR)');
-  console.log('  faculty@academiasync.edu  Faculty@123 (Faculty - CSE)');
-  console.log('  faculty2@academiasync.edu Faculty@123 (Faculty - ECE)');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+};
 
+const runStandalone = async () => {
+  const uri = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGODB_ATLAS_URI;
+  if (!uri) { console.error('❌ MONGO_URI not set in .env'); process.exit(1); }
+
+  await mongoose.connect(uri);
+  console.log('✅ Connected to MongoDB\n');
+  await seedData();
   await mongoose.disconnect();
   process.exit(0);
 };
 
-seed().catch(err => { console.error(err); process.exit(1); });
+if (require.main === module || process.argv[1]?.includes('seed')) {
+  runStandalone().catch(err => { console.error(err); process.exit(1); });
+}

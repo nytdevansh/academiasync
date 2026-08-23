@@ -75,7 +75,17 @@ app.use(helmet({
 }));
 app.use(morgan('dev'));
 
-// Health check
+// Health & Root status endpoints
+app.get('/', (_req, res) => res.json({
+  status: 'ok',
+  app: 'AcademiaSync API',
+  version: '1.0.0',
+  endpoints: {
+    health: '/health',
+    api: '/api/v1',
+  },
+}));
+
 app.get('/health', (_req, res) => res.json({ status: 'ok', app: 'AcademiaSync API', version: '1.0.0' }));
 
 // API Routes — all versioned under /api/v1
