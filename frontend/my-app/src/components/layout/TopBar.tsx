@@ -27,6 +27,7 @@ export const TopBar: React.FC<TopBarProps> = ({ title }) => {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!user) return;
     const fetchNotifs = async () => {
       try {
         const res = await getMyNotifications();
@@ -39,7 +40,7 @@ export const TopBar: React.FC<TopBarProps> = ({ title }) => {
     fetchNotifs();
     const interval = setInterval(fetchNotifs, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
