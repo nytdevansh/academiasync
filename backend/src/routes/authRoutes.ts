@@ -8,6 +8,6 @@ router.post('/register', register);
 router.post('/login', login);
 router.post('/logout', protect, logout);
 router.get('/me', protect, getMe);
-router.post('/refresh-token', protect, refreshToken);
+router.post('/refresh-token', refreshToken);
 
 export default router;

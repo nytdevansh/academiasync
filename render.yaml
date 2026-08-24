@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: academiasync-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render assigns PORT automatically; do NOT hard-code 5000
+      - key: JWT_SECRET
+        sync: false   # Set this in the Render dashboard — never commit the real value
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: MONGO_URI
+        sync: false   # Set this in the Render dashboard
+      - key: CORS_ORIGIN
+        sync: false   # e.g. https://your-app.vercel.app
