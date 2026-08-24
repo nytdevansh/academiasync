@@ -20,6 +20,8 @@ import appraisalRoutes from './routes/appraisalRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import reportRoutes from './routes/reportRoutes';
 import auditRoutes from './routes/auditRoutes';
+import recommendationRoutes from './routes/recommendationRoutes';
+import { startComplianceJobs } from './jobs/complianceAlerts';
 
 
 const app = express();
@@ -102,6 +104,7 @@ app.use(`${API}/appraisals`, appraisalRoutes);
 app.use(`${API}/notifications`, notificationRoutes);
 app.use(`${API}/reports`, reportRoutes);
 app.use(`${API}/audit`, auditRoutes);
+app.use(`${API}/recommendations`, recommendationRoutes);
 
 // 404 handler
 app.use((_req, res) => res.status(404).json({ success: false, error: 'Route not found' }));
@@ -117,6 +120,8 @@ connectDB().then(() => {
     console.log(`📡 Health: http://localhost:${PORT}/health`);
     console.log(`🔗 API:    http://localhost:${PORT}/api/v1\n`);
   });
+  // Start background compliance jobs after DB is ready
+  startComplianceJobs();
 }).catch((err) => {
   console.error('Failed to connect to database:', err);
   process.exit(1);

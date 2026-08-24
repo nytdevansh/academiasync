@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, Building2, BookOpen, TrendingUp, Activity, Shield, GraduationCap, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Users, Building2, BookOpen, TrendingUp, Activity, Shield, GraduationCap, ArrowRight, CheckCircle2, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
 import { StatCard } from '../../components/ui/StatCard';
 import { Card } from '../../components/ui/Card';
@@ -21,7 +21,7 @@ export const DeanDashboard: React.FC = () => {
         if (s.success) setStats(s.data);
         if (o.success) setOverview(o.data);
       } catch {
-        setStats({ totalUsers: 87, totalDepartments: 6, pendingApprovals: 4, auditEventsToday: 18 });
+        setStats({ totalUsers: 87, totalDepartments: 6, pendingApprovals: 4, auditEventsToday: 18, complianceRate: 92, overdueRecommendations: 1 });
         setOverview({
           totalFaculty: 195,
           avgProfileCompleteness: 82,
@@ -70,7 +70,7 @@ export const DeanDashboard: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard label="Total Active Faculty" value={overview?.totalFaculty || 195} icon={<Users className="w-5 h-5 text-blue-600" />} color="blue" trend={{ value: 12, label: 'vs last year' }} subtitle="Across all academic schools" />
         <StatCard label="Academic Departments" value={stats?.totalDepartments || 6} icon={<Building2 className="w-5 h-5 text-teal-600" />} color="teal" subtitle="Autonomous academic divisions" />
-        <StatCard label="Avg Profile Completeness" value={`${Math.round(overview?.avgProfileCompleteness || 82)}%`} icon={<TrendingUp className="w-5 h-5 text-amber-600" />} color="gold" subtitle="Faculty profiles updated" />
+        <StatCard label="Training Compliance" value={`${stats?.complianceRate || 92}%`} icon={<ShieldCheck className="w-5 h-5 text-emerald-600" />} color="emerald" subtitle="Assigned goals fulfilled" />
         <StatCard label="Appraisals In-Progress" value={stats?.pendingApprovals || 14} icon={<Activity className="w-5 h-5 text-indigo-600" />} color="violet" subtitle="Current evaluation cycle" />
       </div>
 

@@ -122,32 +122,78 @@ export const dashboardStats = async (req: AuthRequest, res: Response): Promise<v
     const deptId = req.user?.department;
 
     if (role === 'faculty_member') {
-      const [profile, enrollments, appraisals, notifications] = await Promise.all([
+      const { default: TrainingRecommendation } = await import('../models/TrainingRecommendation');
+      const [profile, enrollments, appraisals, notifications, recs] = await Promise.all([
         FacultyProfile.findOne({ userId }),
         TrainingEnrollment.find({ userId }),
         Appraisal.find({ userId, status: 'completed' }).sort({ createdAt: -1 }).limit(1),
         (await import('../models/Notification')).default.countDocuments({ userId, status: 'unread' }),
+        TrainingRecommendation.find({ facultyId: userId }),
       ]);
-      res.json({ success: true, data: { profileCompleteness: profile?.profileCompleteness || 0, totalTrainings: enrollments.length, activeTrainings: enrollments.filter(e => ['nominated', 'approved'].includes(e.status)).length, completedTrainings: enrollments.filter(e => e.status === 'completed').length, latestAppraisalScore: appraisals[0]?.finalScore || null, unreadNotifications: notifications } });
+      const pendingRecs = recs.filter(r => r.status === 'pending' || r.status === 'overdue').length;
+      res.json({
+        success: true,
+        data: {
+          profileCompleteness: profile?.profileCompleteness || 0,
+          totalTrainings: enrollments.length,
+          activeTrainings: enrollments.filter(e => ['nominated', 'approved'].includes(e.status)).length,
+          completedTrainings: enrollments.filter(e => e.status === 'completed').length,
+          latestAppraisalScore: appraisals[0]?.finalScore || null,
+          unreadNotifications: notifications,
+          recommendedTrainings: pendingRecs,
+        }
+      });
     } else if (role === 'hod') {
+      const { default: TrainingRecommendation } = await import('../models/TrainingRecommendation');
       const deptUsers = await User.find({ department: deptId }).select('_id');
       const userIds = deptUsers.map(u => u._id);
-      const [totalFaculty, pendingApprovals, trainings] = await Promise.all([
+      const [totalFaculty, pendingApprovals, trainings, recTotal, recOverdue, recCompleted] = await Promise.all([
         deptUsers.length,
         TrainingEnrollment.countDocuments({ userId: { $in: userIds }, status: 'nominated' }),
         TrainingEnrollment.find({ userId: { $in: userIds } }),
+        TrainingRecommendation.countDocuments({ facultyId: { $in: userIds } }),
+        TrainingRecommendation.countDocuments({ facultyId: { $in: userIds }, status: 'overdue' }),
+        TrainingRecommendation.countDocuments({ facultyId: { $in: userIds }, status: 'completed' }),
       ]);
       const completedTrainings = trainings.filter(t => t.status === 'completed').length;
       const coverage = totalFaculty > 0 ? Math.round((completedTrainings / totalFaculty) * 100) : 0;
-      res.json({ success: true, data: { totalFaculty, pendingApprovals, trainingCoverage: coverage, totalEnrollments: trainings.length } });
+      const complianceRate = recTotal > 0 ? Math.round((recCompleted / recTotal) * 100) : 100;
+      res.json({
+        success: true,
+        data: {
+          totalFaculty,
+          pendingApprovals,
+          trainingCoverage: coverage,
+          totalEnrollments: trainings.length,
+          recommendationsCount: recTotal,
+          recommendationsOverdue: recOverdue,
+          complianceRate,
+        }
+      });
     } else if (role === 'dean' || role === 'administrator') {
-      const [totalUsers, totalDepts, pendingApprovals, auditToday] = await Promise.all([
+      const { default: TrainingRecommendation } = await import('../models/TrainingRecommendation');
+      const [totalUsers, totalDepts, pendingApprovals, auditToday, totalRecs, overdueRecs, completedRecs] = await Promise.all([
         User.countDocuments({ status: 'active' }),
         Department.countDocuments({ isActive: true }),
         TrainingEnrollment.countDocuments({ status: 'nominated' }),
         (await import('../models/AuditLog')).default.countDocuments({ timestamp: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) } }),
+        TrainingRecommendation.countDocuments(),
+        TrainingRecommendation.countDocuments({ status: 'overdue' }),
+        TrainingRecommendation.countDocuments({ status: 'completed' }),
       ]);
-      res.json({ success: true, data: { totalUsers, totalDepartments: totalDepts, pendingApprovals, auditEventsToday: auditToday } });
+      const complianceRate = totalRecs > 0 ? Math.round((completedRecs / totalRecs) * 100) : 100;
+      res.json({
+        success: true,
+        data: {
+          totalUsers,
+          totalDepartments: totalDepts,
+          pendingApprovals,
+          auditEventsToday: auditToday,
+          totalRecommendations: totalRecs,
+          overdueRecommendations: overdueRecs,
+          complianceRate,
+        }
+      });
     } else {
       res.json({ success: true, data: {} });
     }

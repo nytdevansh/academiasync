@@ -15,6 +15,14 @@ export interface ITrainingProgram extends Document {
   createdBy: mongoose.Types.ObjectId;
   isActive: boolean;
   tags: string[];
+  // Aggregate effectiveness — updated on each enrollment completion
+  effectiveness: {
+    avgImprovementDelta: number; // avg (scoreAfter - scoreBefore) across recommendations
+    avgFacultyRating: number;    // avg enrollment.feedback.rating
+    completionRate: number;      // completed / total enrolled (0–100)
+    totalCompletions: number;
+    lastUpdated?: Date;
+  };
 }
 
 const trainingProgramSchema = new Schema<ITrainingProgram>(
@@ -33,6 +41,13 @@ const trainingProgramSchema = new Schema<ITrainingProgram>(
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     isActive: { type: Boolean, default: true },
     tags: [String],
+    effectiveness: {
+      avgImprovementDelta: { type: Number, default: 0 },
+      avgFacultyRating:    { type: Number, default: 0 },
+      completionRate:      { type: Number, default: 0 },
+      totalCompletions:    { type: Number, default: 0 },
+      lastUpdated:         Date,
+    },
   },
   { timestamps: true }
 );

@@ -196,8 +196,53 @@ export const completeEnrollment = async (req: AuthRequest, res: Response): Promi
       req.params.id,
       { status: 'completed', feedback, certificateUrl, completionDate: new Date() },
       { new: true }
-    );
+    ).populate('programId', 'title');
     if (!updated) { res.status(404).json({ success: false, error: 'Enrollment not found' }); return; }
+
+    // Check if there is a linked or matching TrainingRecommendation
+    const { default: TrainingRecommendation } = await import('../models/TrainingRecommendation');
+    const rec = await TrainingRecommendation.findOne({
+      $or: [
+        { enrollmentId: updated._id },
+        { facultyId: updated.userId, programId: updated.programId, status: { $in: ['pending', 'enrolled', 'overdue'] } }
+      ]
+    });
+
+    if (rec) {
+      if (rec.status !== 'completed') {
+        rec.status = 'enrolled'; // Enrolled & completed course, awaiting HOD post-assessment
+        rec.enrollmentId = updated._id as any;
+        await rec.save();
+      }
+
+      // Notify recommender to perform post-assessment
+      await Notification.create({
+        userId: rec.recommendedBy,
+        type: 'training',
+        title: 'Training Completed — Assessment Required',
+        message: `${req.user?.name} has completed the training "${(updated.programId as any)?.title || 'Program'}". Please record a post-assessment score to measure competency growth.`,
+        relatedEntityType: 'TrainingRecommendation',
+        relatedEntityId: rec._id,
+      });
+    }
+
+    // Update Program Effectiveness Aggregates
+    const programId = (updated.programId as any)?._id || updated.programId;
+    if (programId) {
+      const allEnrollments = await TrainingEnrollment.find({ programId });
+      const completedList = allEnrollments.filter(e => e.status === 'completed');
+      const ratings = completedList.filter(e => e.feedback?.rating).map(e => e.feedback!.rating);
+      const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
+      const completionRate = allEnrollments.length > 0 ? Math.round((completedList.length / allEnrollments.length) * 100) : 0;
+
+      await TrainingProgram.findByIdAndUpdate(programId, {
+        'effectiveness.avgFacultyRating': Math.round(avgRating * 10) / 10,
+        'effectiveness.completionRate': completionRate,
+        'effectiveness.totalCompletions': completedList.length,
+        'effectiveness.lastUpdated': new Date(),
+      });
+    }
+
     await logAudit(req.user?._id, 'update', 'TrainingEnrollment', req.params.id, 'Marked as completed with feedback', { status: 'attended' }, { status: 'completed' }, req.ip, req.headers['user-agent']);
     res.json({ success: true, data: updated });
   } catch (err: any) {

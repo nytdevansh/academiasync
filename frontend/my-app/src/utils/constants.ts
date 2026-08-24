@@ -58,6 +58,21 @@ export const TRAINING_STATUS_COLORS: Record<string, string> = {
   attended: 'badge-violet', completed: 'badge-success', withdrawn: 'badge-muted',
 };
 
+export const RECOMMENDATION_STATUS_LABELS: Record<string, string> = {
+  pending:   'Action Required',
+  enrolled:  'Enrolled',
+  completed: 'Completed',
+  overdue:   'Overdue',
+  ignored:   'Ignored',
+};
+export const RECOMMENDATION_STATUS_COLORS: Record<string, 'warning' | 'info' | 'success' | 'danger' | 'muted'> = {
+  pending:   'warning',
+  enrolled:  'info',
+  completed: 'success',
+  overdue:   'danger',
+  ignored:   'muted',
+};
+
 export const APPRAISAL_STATUS_LABELS: Record<string, string> = {
   draft: 'Not Started', self_submitted: 'Self-Assessment Submitted',
   under_review: 'Under Review', completed: 'Completed',
