@@ -19,7 +19,9 @@ export const connectDB = async () => {
       console.log('✅ Initial database seed completed.');
     }
   } catch (error) {
-    console.error(`MongoDB Connection Warning: ${(error as Error).message}`);
-    // Don't crash immediately in dev to allow fallback/mock operation
+    console.error(`❌ MongoDB Connection Error: ${(error as Error).message}`);
+    // Re-throw so the server doesn't start with a broken DB connection.
+    // Render/Node will restart the process, which surfaces config problems early.
+    throw error;
   }
 };

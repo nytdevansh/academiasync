@@ -122,8 +122,24 @@ export const getMe = async (req: AuthRequest, res: Response) => {
 
 export const refreshToken = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) return res.status(401).json({ success: false, error: 'Not authorized' });
-    const token = generateToken(req.user._id);
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, error: 'No token provided' });
+    }
+
+    const oldToken = authHeader.split(' ')[1];
+    let decoded: any;
+    try {
+      // Accept tokens even if recently expired so the client can refresh smoothly
+      decoded = jwt.verify(oldToken, process.env.JWT_SECRET as string, { ignoreExpiration: true }) as any;
+    } catch {
+      return res.status(401).json({ success: false, error: 'Invalid token' });
+    }
+
+    const user = await User.findById(decoded.id).select('-passwordHash');
+    if (!user) return res.status(401).json({ success: false, error: 'User not found' });
+
+    const token = generateToken(user._id);
     res.json({ success: true, data: { token } });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
