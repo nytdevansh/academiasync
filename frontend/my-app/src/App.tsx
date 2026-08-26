@@ -21,6 +21,7 @@ import { ProfilePage } from './pages/profile/ProfilePage';
 import { EditProfilePage } from './pages/profile/EditProfilePage';
 import { TrainingCatalogPage } from './pages/training/TrainingCatalogPage';
 import { MyEnrollmentsPage, HODApprovalsPage } from './pages/training/TrainingPages';
+import { CourseLearningPage } from './pages/training/CourseLearningPage';
 import { CompetencyPage } from './pages/competency/CompetencyPage';
 import { AppraisalListPage } from './pages/appraisal/AppraisalPages';
 import { ReportsPage } from './pages/reports/ReportsPage';
@@ -53,6 +54,7 @@ const App: React.FC = () => (
 
           <Route path="/training/catalog" element={<TrainingCatalogPage />} />
           <Route path="/training/my-enrollments" element={<MyEnrollmentsPage />} />
+          <Route path="/training/:id/learn" element={<CourseLearningPage />} />
           <Route path="/training/approvals" element={<ProtectedRoute allowedRoles={['hod', 'dean', 'administrator']}><HODApprovalsPage /></ProtectedRoute>} />
 
           <Route path="/competency" element={<CompetencyPage />} />

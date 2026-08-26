@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle2, XCircle, MessageSquare, Clock, Calendar, ShieldCheck, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { CheckCircle2, XCircle, MessageSquare, Clock, Calendar, ShieldCheck, AlertCircle, PlayCircle } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -15,6 +16,7 @@ import { useAuth } from '../../context/AuthContext';
 
 // ── My Enrollments ────────────────────────────────────────────────────────────
 export const MyEnrollmentsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [enrollments, setEnrollments] = useState<TrainingEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -142,9 +144,23 @@ export const MyEnrollmentsPage: React.FC = () => {
                   </div>
                 )}
 
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Nominated: {new Date(enrollment.nominationDate).toLocaleDateString()}</span>
-                  {enrollment.completionDate && <span>Completed: {new Date(enrollment.completionDate).toLocaleDateString()}</span>}
+                <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400">
+                  <div className="flex items-center gap-3">
+                    <span>Nominated: {new Date(enrollment.nominationDate).toLocaleDateString()}</span>
+                    {enrollment.completionDate && <span>Completed: {new Date(enrollment.completionDate).toLocaleDateString()}</span>}
+                  </div>
+
+                  {['approved', 'attended', 'completed'].includes(enrollment.status) && (
+                    <Button
+                      size="sm"
+                      variant={enrollment.status === 'completed' ? 'outline' : 'primary'}
+                      onClick={() => navigate(`/training/${prog?._id || 'demo'}/learn`)}
+                      className="flex items-center gap-1.5"
+                    >
+                      <PlayCircle className="w-3.5 h-3.5" />
+                      <span>{enrollment.status === 'completed' ? 'Review Course Content' : 'Go to Course & Test'}</span>
+                    </Button>
+                  )}
                 </div>
               </Card>
             );

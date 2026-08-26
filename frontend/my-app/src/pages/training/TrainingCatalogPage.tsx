@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, MapPin, Users, Tag, Clock, CheckCircle2, Search, ArrowRight, ShieldCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Calendar, MapPin, Users, Tag, Clock, CheckCircle2, Search, ArrowRight, ShieldCheck, PlayCircle, Settings, Sparkles } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -8,6 +9,7 @@ import { Modal } from '../../components/ui/Modal';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { getPrograms, enrollInProgram } from '../../api/training';
+import { CourseManageModal } from './CourseManageModal';
 import type { TrainingProgram } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 
@@ -16,11 +18,13 @@ const TYPE_COLORS: Record<string, any> = { FDP: 'primary', Workshop: 'teal', Sem
 
 export const TrainingCatalogPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [programs, setPrograms] = useState<TrainingProgram[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [selectedProgram, setSelectedProgram] = useState<TrainingProgram | null>(null);
+  const [manageProgram, setManageProgram] = useState<TrainingProgram | null>(null);
   const [enrollLoading, setEnrollLoading] = useState(false);
   const [enrollSuccess, setEnrollSuccess] = useState(false);
 
@@ -137,10 +141,48 @@ export const TrainingCatalogPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="pt-3 border-t border-slate-100">
-                <Button variant="primary" size="sm" fullWidth>
-                  {['faculty_member', 'hod'].includes(user?.role || '') ? 'Nominate / Enroll Now' : 'View Full Details'}
+              <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="flex-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedProgram(program);
+                    setEnrollSuccess(false);
+                  }}
+                >
+                  {['faculty_member', 'hod'].includes(user?.role || '') ? 'Nominate / Enroll' : 'Details'}
                 </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/training/${program._id}/learn`);
+                  }}
+                  title="Launch Course Delivery LMS"
+                  className="flex items-center gap-1"
+                >
+                  <PlayCircle className="w-3.5 h-3.5" />
+                  <span>LMS</span>
+                </Button>
+
+                {['hod', 'dean', 'administrator'].includes(user?.role || '') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setManageProgram(program);
+                    }}
+                    title="Manage modules, mark attendance, and setup assessments"
+                    className="text-slate-500 hover:text-blue-600 p-2"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                  </Button>
+                )}
               </div>
             </Card>
           ))}
@@ -155,11 +197,26 @@ export const TrainingCatalogPage: React.FC = () => {
         size="lg"
         footer={
           !enrollSuccess ? (
-            <div className="flex items-center justify-end gap-3 w-full">
-              <Button variant="ghost" onClick={() => setSelectedProgram(null)}>Close</Button>
-              <Button variant="primary" loading={enrollLoading} onClick={handleEnroll}>
-                {['faculty_member', 'hod'].includes(user?.role || '') ? 'Confirm Nomination' : 'Self-Nominate for Program'}
+            <div className="flex items-center justify-between w-full">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const pId = selectedProgram?._id;
+                  setSelectedProgram(null);
+                  if (pId) navigate(`/training/${pId}/learn`);
+                }}
+                className="flex items-center gap-1.5"
+              >
+                <PlayCircle className="w-4 h-4" />
+                <span>Launch LMS &amp; Take Test</span>
               </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" onClick={() => setSelectedProgram(null)}>Close</Button>
+                <Button variant="primary" loading={enrollLoading} onClick={handleEnroll}>
+                  {['faculty_member', 'hod'].includes(user?.role || '') ? 'Confirm Nomination' : 'Self-Nominate for Program'}
+                </Button>
+              </div>
             </div>
           ) : null
         }
@@ -172,9 +229,21 @@ export const TrainingCatalogPage: React.FC = () => {
               </div>
               <h3 className="text-lg font-bold text-slate-900">Training Nomination Submitted!</h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Your nomination has been routed to your Head of Department for formal endorsement. You will receive real-time notification upon decision.
+                Your nomination has been routed to your Head of Department for formal endorsement. You can also preview the course modules and preparation materials in the LMS hub.
               </p>
-              <Button variant="secondary" onClick={() => setSelectedProgram(null)}>Done</Button>
+              <div className="flex justify-center gap-2">
+                <Button variant="secondary" onClick={() => setSelectedProgram(null)}>Done</Button>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    const pId = selectedProgram._id;
+                    setSelectedProgram(null);
+                    navigate(`/training/${pId}/learn`);
+                  }}
+                >
+                  Open Course Hub →
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-4 text-xs">
@@ -217,6 +286,16 @@ export const TrainingCatalogPage: React.FC = () => {
           )
         )}
       </Modal>
+
+      {/* Instructor LMS & Attendance Manager Modal */}
+      {manageProgram && (
+        <CourseManageModal
+          open={!!manageProgram}
+          onClose={() => setManageProgram(null)}
+          programId={manageProgram._id}
+          programTitle={manageProgram.title}
+        />
+      )}
     </div>
   );
 };
