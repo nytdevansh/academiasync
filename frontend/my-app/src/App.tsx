@@ -24,6 +24,9 @@ import { MyEnrollmentsPage, HODApprovalsPage } from './pages/training/TrainingPa
 import { CourseLearningPage } from './pages/training/CourseLearningPage';
 import { CompetencyPage } from './pages/competency/CompetencyPage';
 import { AppraisalListPage } from './pages/appraisal/AppraisalPages';
+import { AssessmentListPage } from './pages/assessments/AssessmentListPage';
+import { TakeAssessmentPage } from './pages/assessments/TakeAssessmentPage';
+import { AssessmentAnalyticsPage } from './pages/assessments/AssessmentAnalyticsPage';
 import { ReportsPage } from './pages/reports/ReportsPage';
 import { UserManagementPage, AuditLogPage } from './pages/admin/AdminPages';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -56,6 +59,11 @@ const App: React.FC = () => (
           <Route path="/training/my-enrollments" element={<MyEnrollmentsPage />} />
           <Route path="/training/:id/learn" element={<CourseLearningPage />} />
           <Route path="/training/approvals" element={<ProtectedRoute allowedRoles={['hod', 'dean', 'administrator']}><HODApprovalsPage /></ProtectedRoute>} />
+
+          <Route path="/assessments" element={<AssessmentListPage />} />
+          <Route path="/assessments/:id/take" element={<TakeAssessmentPage />} />
+          <Route path="/assessments/:id/results" element={<TakeAssessmentPage />} />
+          <Route path="/assessments/:id/analytics" element={<ProtectedRoute allowedRoles={['hod', 'dean', 'hr', 'administrator']}><AssessmentAnalyticsPage /></ProtectedRoute>} />
 
           <Route path="/competency" element={<CompetencyPage />} />
           <Route path="/competency/gap-analysis" element={<ProtectedRoute allowedRoles={['hod', 'dean', 'administrator']}><CompetencyPage /></ProtectedRoute>} />

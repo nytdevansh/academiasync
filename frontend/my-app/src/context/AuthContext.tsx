@@ -3,7 +3,7 @@ import type { User, UserRole } from '../types';
 import { getMe, refreshToken as apiRefreshToken, login as apiLogin } from '../api/auth';
 import { DEMO_CREDENTIALS } from '../utils/constants';
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;

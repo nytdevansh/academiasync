@@ -21,6 +21,7 @@ import notificationRoutes from './routes/notificationRoutes';
 import reportRoutes from './routes/reportRoutes';
 import auditRoutes from './routes/auditRoutes';
 import recommendationRoutes from './routes/recommendationRoutes';
+import assessmentRoutes from './routes/assessmentRoutes';
 import { startComplianceJobs } from './jobs/complianceAlerts';
 
 
@@ -105,6 +106,7 @@ app.use(`${API}/notifications`, notificationRoutes);
 app.use(`${API}/reports`, reportRoutes);
 app.use(`${API}/audit`, auditRoutes);
 app.use(`${API}/recommendations`, recommendationRoutes);
+app.use(`${API}/assessments`, assessmentRoutes);
 
 // 404 handler
 app.use((_req, res) => res.status(404).json({ success: false, error: 'Route not found' }));

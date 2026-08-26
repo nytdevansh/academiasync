@@ -204,6 +204,107 @@ export interface AuditLog {
   timestamp: string;
 }
 
+// ── Custom Assessment & Survey Engine Types ──────────────────────────────────
+export type AssessmentQuestionType = 'mcq' | 'text' | 'rating' | 'boolean';
+export type AssessmentScopeType = 'department' | 'individual' | 'role' | 'all';
+export type AssessmentStatus = 'draft' | 'published' | 'closed';
+export type AssessmentResponseStatus = 'in_progress' | 'submitted' | 'reviewed';
+
+export interface AssessmentQuestion {
+  _id?: string;
+  prompt: string;
+  type: AssessmentQuestionType;
+  options?: string[];
+  correctAnswer?: any;
+  points?: number;
+  rubricGuide?: string;
+  competencyId?: string | SkillArea;
+}
+
+export interface AssessmentTargetScope {
+  type: AssessmentScopeType;
+  targetIds?: (Department | User | string)[];
+}
+
+export interface AssessmentSettings {
+  isGraded: boolean;
+  isAnonymous: boolean;
+  allowRetake: boolean;
+  maxAttempts?: number;
+  timeLimitMinutes?: number;
+  dueDate?: string;
+}
+
+export interface Assessment {
+  _id: string;
+  title: string;
+  description?: string;
+  topic: string;
+  createdBy: User;
+  createdByRole: 'hod' | 'dean' | 'administrator';
+  targetScope: AssessmentTargetScope;
+  questions: AssessmentQuestion[];
+  settings: AssessmentSettings;
+  status: AssessmentStatus;
+  isTemplate: boolean;
+  totalSubmissions?: number;
+  mySubmission?: {
+    responseId: string;
+    attemptNumber: number;
+    status: AssessmentResponseStatus;
+    totalScore: number;
+    maxScore: number;
+    submittedAt: string;
+  } | null;
+  myResponses?: AssessmentResponse[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssessmentAnswer {
+  questionId: string;
+  answer: any;
+  score?: number;
+  feedback?: string;
+}
+
+export interface AssessmentResponse {
+  _id: string;
+  assessmentId: string | Assessment;
+  facultyId: string | User;
+  faculty?: User | { name: string; email: string; department?: any; role?: string };
+  attemptNumber: number;
+  answers: AssessmentAnswer[];
+  totalScore: number;
+  maxScore: number;
+  status: AssessmentResponseStatus;
+  startedAt?: string;
+  submittedAt?: string;
+  timeTakenSeconds?: number;
+  reviewerNotes?: string;
+  reviewedBy?: User;
+  reviewedAt?: string;
+  createdAt: string;
+}
+
+export interface AssessmentAnalytics {
+  totalResponses: number;
+  averageScore: number;
+  averageScorePct: number;
+  scoreDistribution: { range: string; count: number }[];
+  questionStats: {
+    questionNumber: number;
+    prompt: string;
+    type: AssessmentQuestionType;
+    correctCount?: number;
+    incorrectCount?: number;
+    accuracyPct?: number;
+    averageRating?: number;
+    distribution?: Record<number, number>;
+    submittedResponsesCount?: number;
+  }[];
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;

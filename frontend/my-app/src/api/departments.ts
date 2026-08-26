@@ -6,6 +6,8 @@ export const getAllDepartments = async (): Promise<ApiResponse<Department[]>> =>
   return data;
 };
 
+export const getDepartments = getAllDepartments;
+
 export const createDepartment = async (dept: Partial<Department>): Promise<ApiResponse<Department>> => {
   const { data } = await axiosInstance.post('/departments', dept);
   return data;

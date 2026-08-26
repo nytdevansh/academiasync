@@ -28,6 +28,23 @@ const auditLogSchema = new Schema<IAuditLog>(
   }
 );
 
+// Enforce append-only immutability
+auditLogSchema.pre('updateOne', function () {
+  throw new Error('AuditLog records are append-only and immutable.');
+});
+auditLogSchema.pre('updateMany', function () {
+  throw new Error('AuditLog records are append-only and immutable.');
+});
+auditLogSchema.pre('findOneAndUpdate', function () {
+  throw new Error('AuditLog records are append-only and immutable.');
+});
+auditLogSchema.pre('deleteOne', function () {
+  throw new Error('AuditLog records are append-only and immutable.');
+});
+auditLogSchema.pre('deleteMany', function () {
+  throw new Error('AuditLog records are append-only and immutable.');
+});
+
 // Index for efficient filtering
 auditLogSchema.index({ userId: 1, timestamp: -1 });
 auditLogSchema.index({ entityType: 1, timestamp: -1 });

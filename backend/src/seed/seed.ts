@@ -14,6 +14,8 @@ import TrainingProgram from '../models/TrainingProgram';
 import TrainingEnrollment from '../models/TrainingEnrollment';
 import AppraisalCycle from '../models/AppraisalCycle';
 import CompetencyRecord from '../models/CompetencyRecord';
+import Assessment from '../models/Assessment';
+import AssessmentResponse from '../models/AssessmentResponse';
 
 const hash = async (pw: string) => bcrypt.hash(pw, await bcrypt.genSalt(10));
 
@@ -26,6 +28,7 @@ export const seedData = async () => {
     SkillArea.deleteMany({}), FacultyProfile.deleteMany({}),
     TrainingProgram.deleteMany({}), TrainingEnrollment.deleteMany({}),
     AppraisalCycle.deleteMany({}), CompetencyRecord.deleteMany({}),
+    Assessment.deleteMany({}), AssessmentResponse.deleteMany({}),
   ]);
 
   // ── Departments ──────────────────────────────────────────────────────────────
@@ -188,6 +191,298 @@ export const seedData = async () => {
     { userId: fac1._id, skillArea: ictSkill._id, currentLevel: 'expert', targetLevel: 'expert', lastAssessedDate: new Date() },
     { userId: fac2._id, skillArea: teachSkill._id, currentLevel: 'proficient', targetLevel: 'advanced', lastAssessedDate: new Date() },
     { userId: fac2._id, skillArea: indSkill._id, currentLevel: 'advanced', targetLevel: 'expert', lastAssessedDate: new Date() },
+  ]);
+
+  // ── Custom Assessments & Surveys ─────────────────────────────────────────────
+  console.log('📋  Seeding custom assessments & surveys...');
+  const qAI1 = new mongoose.Types.ObjectId();
+  const qAI2 = new mongoose.Types.ObjectId();
+  const qAI3 = new mongoose.Types.ObjectId();
+  const qAI4 = new mongoose.Types.ObjectId();
+
+  const qS1 = new mongoose.Types.ObjectId();
+  const qS2 = new mongoose.Types.ObjectId();
+  const qS3 = new mongoose.Types.ObjectId();
+  const qS4 = new mongoose.Types.ObjectId();
+
+  const qE1 = new mongoose.Types.ObjectId();
+  const qE2 = new mongoose.Types.ObjectId();
+  const qE3 = new mongoose.Types.ObjectId();
+
+  const [assessmentAI, assessmentSurvey, assessmentEthics] = await Assessment.insertMany([
+    {
+      title: 'AI Pedagogy & Generative AI Ethics in Higher Ed',
+      description: 'Institutional assessment on modern AI tooling, syllabus integration, formative viva evaluations, and contract cheating deterrence.',
+      topic: 'AI & Pedagogy',
+      createdBy: hodCSE._id,
+      createdByRole: 'hod',
+      targetScope: { type: 'department', targetIds: [cse._id] },
+      questions: [
+        {
+          _id: qAI1,
+          prompt: 'What is the primary pedagogical vulnerability of unproctored coding assignments in the era of LLMs?',
+          type: 'mcq',
+          options: [
+            'Superficial completion without underlying architectural comprehension',
+            'Slower compilation times on student machines',
+            'Inability to write unit tests',
+            'Excessive reliance on open-source libraries',
+          ],
+          correctAnswer: 0,
+          points: 3,
+          competencyId: teachSkill._id,
+        },
+        {
+          _id: qAI2,
+          prompt: 'True or False: Formative oral vivas combined with code walk-through rubrics provide strong verification of authentic student learning.',
+          type: 'boolean',
+          correctAnswer: true,
+          points: 2,
+          competencyId: teachSkill._id,
+        },
+        {
+          _id: qAI3,
+          prompt: 'On a scale of 1 to 5, how confident do you feel designing AI-resilient assignments for your current semester subjects?',
+          type: 'rating',
+          points: 0,
+          competencyId: ictSkill._id,
+        },
+        {
+          _id: qAI4,
+          prompt: 'Outline your department-level strategy for assessing complex student projects where AI assistants (e.g., Copilot) are explicitly permitted.',
+          type: 'text',
+          points: 5,
+          rubricGuide: 'Evaluate based on viva integration, incremental commit history review, and design rationale defense.',
+          competencyId: teachSkill._id,
+        },
+      ],
+      settings: {
+        isGraded: true,
+        isAnonymous: false,
+        allowRetake: true,
+        maxAttempts: 2,
+        timeLimitMinutes: 25,
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+      status: 'published',
+      isTemplate: false,
+    },
+    {
+      title: 'Curriculum Modernization & Lab Readiness Survey',
+      description: 'Campus-wide anonymous faculty survey evaluating laboratory computing equipment, software licensing, and industry alignment.',
+      topic: 'Infrastructure & Curriculum',
+      createdBy: dean._id,
+      createdByRole: 'dean',
+      targetScope: { type: 'all' },
+      questions: [
+        {
+          _id: qS1,
+          prompt: 'How adequate are current departmental computing and laboratory facilities for teaching cutting-edge syllabi?',
+          type: 'rating',
+          points: 0,
+        },
+        {
+          _id: qS2,
+          prompt: 'How satisfied are you with institutional turnaround times for procuring specialized software licenses and datasets?',
+          type: 'rating',
+          points: 0,
+        },
+        {
+          _id: qS3,
+          prompt: 'True or False: Your department has established a formal industry advisory board to review semester curriculum revisions.',
+          type: 'boolean',
+          correctAnswer: true,
+          points: 0,
+        },
+        {
+          _id: qS4,
+          prompt: 'What specific hardware, server infrastructure, or cloud credits would most accelerate your department research and laboratory instruction?',
+          type: 'text',
+          points: 0,
+        },
+      ],
+      settings: {
+        isGraded: false,
+        isAnonymous: true,
+        allowRetake: false,
+        maxAttempts: 1,
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      },
+      status: 'published',
+      isTemplate: false,
+    },
+    {
+      title: 'Research Ethics, IPR & High-Impact Publishing Benchmark',
+      description: 'Standardized evaluation of author contributions, plagiarism thresholds, ethical animal/human protocols, and patent disclosures.',
+      topic: 'Research & Ethics',
+      createdBy: admin._id,
+      createdByRole: 'administrator',
+      targetScope: { type: 'all' },
+      questions: [
+        {
+          _id: qE1,
+          prompt: 'Under standard IEEE and UGC guidelines, which criteria must be satisfied to qualify for journal paper co-authorship?',
+          type: 'mcq',
+          options: [
+            'Substantial intellectual contribution to conception, experimental execution, or manuscript formulation',
+            'Acquisition of department funding alone',
+            'General administrative supervision of the research group',
+            'Proofreading formatting styles without technical edits',
+          ],
+          correctAnswer: 0,
+          points: 4,
+          competencyId: resSkill._id,
+        },
+        {
+          _id: qE2,
+          prompt: 'True or False: Republication of substantial portions of one’s own previously published work without explicit citation is considered self-plagiarism.',
+          type: 'boolean',
+          correctAnswer: true,
+          points: 3,
+          competencyId: resSkill._id,
+        },
+        {
+          _id: qE3,
+          prompt: 'Describe the institutional process required prior to public disclosure if a research invention has patent potential.',
+          type: 'text',
+          points: 3,
+          rubricGuide: 'Look for submission to institutional IPR cell prior to arXiv or conference publication.',
+          competencyId: resSkill._id,
+        },
+      ],
+      settings: {
+        isGraded: true,
+        isAnonymous: false,
+        allowRetake: false,
+        maxAttempts: 1,
+        timeLimitMinutes: 30,
+        dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+      },
+      status: 'published',
+      isTemplate: true,
+    },
+  ]);
+
+  // ── Seed Assessment Responses ────────────────────────────────────────────────
+  console.log('📝  Seeding assessment responses...');
+  await AssessmentResponse.insertMany([
+    // fac1 response to AI Pedagogy (graded & reviewed)
+    {
+      assessmentId: assessmentAI._id,
+      facultyId: fac1._id,
+      attemptNumber: 1,
+      answers: [
+        { questionId: qAI1, answer: 0, score: 3 },
+        { questionId: qAI2, answer: true, score: 2 },
+        { questionId: qAI3, answer: 4, score: 0 },
+        {
+          questionId: qAI4,
+          answer: 'We require students to submit recorded 3-minute code walkthroughs, followed by randomized parameter variations during live lab sessions to verify true understanding.',
+          score: 5,
+          feedback: 'Outstanding pedagogical framework with viva-based verification.',
+        },
+      ],
+      totalScore: 10,
+      maxScore: 10,
+      status: 'reviewed',
+      startedAt: new Date(Date.now() - 48 * 3600 * 1000),
+      submittedAt: new Date(Date.now() - 47 * 3600 * 1000),
+      timeTakenSeconds: 1120,
+      reviewerNotes: 'Exemplary submission. Recommend sharing this viva rubric across the CSE department.',
+      reviewedBy: hodCSE._id,
+      reviewedAt: new Date(Date.now() - 24 * 3600 * 1000),
+    },
+    // fac3 response to AI Pedagogy (submitted, pending text review)
+    {
+      assessmentId: assessmentAI._id,
+      facultyId: fac3._id,
+      attemptNumber: 1,
+      answers: [
+        { questionId: qAI1, answer: 0, score: 3 },
+        { questionId: qAI2, answer: true, score: 2 },
+        { questionId: qAI3, answer: 3, score: 0 },
+        {
+          questionId: qAI4,
+          answer: 'I use automated unit testing and check Git commit intervals to ensure continuous development.',
+          score: 0,
+        },
+      ],
+      totalScore: 5,
+      maxScore: 10,
+      status: 'submitted',
+      startedAt: new Date(Date.now() - 12 * 3600 * 1000),
+      submittedAt: new Date(Date.now() - 11.5 * 3600 * 1000),
+      timeTakenSeconds: 980,
+    },
+    // fac1 response to Survey
+    {
+      assessmentId: assessmentSurvey._id,
+      facultyId: fac1._id,
+      attemptNumber: 1,
+      answers: [
+        { questionId: qS1, answer: 4, score: 0 },
+        { questionId: qS2, answer: 3, score: 0 },
+        { questionId: qS3, answer: true, score: 0 },
+        {
+          questionId: qS4,
+          answer: 'Dedicated NVIDIA GPU workstations for deep learning labs and accelerated access to cloud compute clusters.',
+          score: 0,
+        },
+      ],
+      totalScore: 0,
+      maxScore: 0,
+      status: 'reviewed',
+      startedAt: new Date(Date.now() - 36 * 3600 * 1000),
+      submittedAt: new Date(Date.now() - 35.8 * 3600 * 1000),
+      timeTakenSeconds: 420,
+    },
+    // fac2 response to Survey
+    {
+      assessmentId: assessmentSurvey._id,
+      facultyId: fac2._id,
+      attemptNumber: 1,
+      answers: [
+        { questionId: qS1, answer: 5, score: 0 },
+        { questionId: qS2, answer: 4, score: 0 },
+        { questionId: qS3, answer: true, score: 0 },
+        {
+          questionId: qS4,
+          answer: 'Modern FPGA development boards (Xilinx Zynq) and Cadence VLSI layout tool licenses for ECE labs.',
+          score: 0,
+        },
+      ],
+      totalScore: 0,
+      maxScore: 0,
+      status: 'reviewed',
+      startedAt: new Date(Date.now() - 20 * 3600 * 1000),
+      submittedAt: new Date(Date.now() - 19.8 * 3600 * 1000),
+      timeTakenSeconds: 380,
+    },
+    // fac2 response to Ethics benchmark
+    {
+      assessmentId: assessmentEthics._id,
+      facultyId: fac2._id,
+      attemptNumber: 1,
+      answers: [
+        { questionId: qE1, answer: 0, score: 4 },
+        { questionId: qE2, answer: true, score: 3 },
+        {
+          questionId: qE3,
+          answer: 'Invention must be submitted to the University IPR facilitation cell for prior art search and provisional patent filing before presenting at conferences or posting preprints.',
+          score: 3,
+          feedback: 'Accurate process description.',
+        },
+      ],
+      totalScore: 10,
+      maxScore: 10,
+      status: 'reviewed',
+      startedAt: new Date(Date.now() - 15 * 3600 * 1000),
+      submittedAt: new Date(Date.now() - 14.5 * 3600 * 1000),
+      timeTakenSeconds: 890,
+      reviewerNotes: 'Flawless grasp of university patent disclosure protocols.',
+      reviewedBy: admin._id,
+      reviewedAt: new Date(Date.now() - 10 * 3600 * 1000),
+    },
   ]);
 
   console.log('\n✅ Seed complete!\n');
