@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { User, UserRole } from '../types';
-import { getMe, refreshToken as apiRefreshToken, login as apiLogin } from '../api/auth';
+import { getMe, refreshToken as apiRefreshToken, login as apiLogin, logout as apiLogout } from '../api/auth';
 import { DEMO_CREDENTIALS } from '../utils/constants';
 
 export interface AuthContextType {
@@ -8,7 +8,7 @@ export interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (token: string, user: User) => void;
+  login: (token: string, user: User, refreshToken?: string) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
   refreshToken: () => Promise<string | null>;
@@ -56,6 +56,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const res = await apiRefreshToken();
       if (res.success && res.data?.token) {
         localStorage.setItem('token', res.data.token);
+        if (res.data.refreshToken) {
+          localStorage.setItem('refreshToken', res.data.refreshToken);
+        }
         setToken(res.data.token);
         return res.data.token;
       }
@@ -91,6 +94,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const handleAuthExpired = () => {
       setToken(null);
       setUser(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
     };
 
     window.addEventListener('storage', handleStorageChange);
@@ -102,16 +108,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
-  const login = (newToken: string, newUser: User) => {
+  const login = (newToken: string, newUser: User, newRefreshToken?: string) => {
     if (!newToken || !newUser) return;
     localStorage.setItem('token', newToken);
     localStorage.setItem('user', JSON.stringify(newUser));
+    if (newRefreshToken) {
+      localStorage.setItem('refreshToken', newRefreshToken);
+    }
     setToken(newToken);
     setUser(newUser);
   };
 
   const logout = () => {
+    const storedRefreshToken = localStorage.getItem('refreshToken');
+    if (storedRefreshToken) {
+      apiLogout(storedRefreshToken).catch(() => {});
+    }
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
@@ -130,6 +144,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const res: any = await apiLogin(demo.email, demo.password);
       if (res.success && res.data) {
         const receivedToken = res.data.token;
+        const receivedRefreshToken = res.data.refreshToken;
         const receivedUser = res.data.user || {
           _id: res.data._id,
           name: res.data.name,
@@ -139,7 +154,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           status: res.data.status || 'active',
         };
         if (receivedToken && receivedUser?._id) {
-          login(receivedToken, receivedUser);
+          login(receivedToken, receivedUser, receivedRefreshToken);
           setIsLoading(false);
           return receivedUser;
         }
@@ -196,5 +211,3 @@ export const useAuth = () => {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 };
-
-

@@ -1,12 +1,17 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+import { validateEnv } from './config/validateEnv';
+// Validate required secrets and configuration before server startup
+validateEnv();
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { connectDB } from './config/db';
 import { errorHandler } from './middlewares/errorHandler';
+import { apiLimiter } from './middlewares/rateLimiter';
 
 // Route imports
 import authRoutes from './routes/authRoutes';
@@ -94,6 +99,7 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', app: 'AcademiaSync AP
 
 // API Routes — all versioned under /api/v1
 const API = '/api/v1';
+app.use(API, apiLimiter);
 app.use(`${API}/auth`, authRoutes);
 app.use(`${API}/users`, userRoutes);
 app.use(`${API}/departments`, departmentRoutes);

@@ -17,7 +17,7 @@ import CompetencyRecord from '../models/CompetencyRecord';
 import Assessment from '../models/Assessment';
 import AssessmentResponse from '../models/AssessmentResponse';
 
-const hash = async (pw: string) => bcrypt.hash(pw, await bcrypt.genSalt(10));
+const hash = async (pw: string) => bcrypt.hash(pw, await bcrypt.genSalt(12));
 
 export const seedData = async () => {
 

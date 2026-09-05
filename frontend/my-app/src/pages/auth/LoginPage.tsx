@@ -38,7 +38,7 @@ export const LoginPage: React.FC = () => {
           status: res.data.status || 'active',
         };
         if (token && userData?._id) {
-          login(token, userData);
+          login(token, userData, res.data.refreshToken);
           navigate(redirectPath, { replace: true });
           return;
         }
