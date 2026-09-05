@@ -8,11 +8,13 @@ dotenv.config();
 export const connectDB = async () => {
   try {
     const uri = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGODB_ATLAS_URI || 'mongodb://localhost:27017/academiasync';
-    const pathPart = uri.replace(/^mongodb(\+srv)?:\/\/[^/]+/, '');
-    const hasExplicitDb = /^\/[a-zA-Z0-9_-]+(\?|$)/.test(pathPart) && !pathPart.startsWith('/?');
-    const options = hasExplicitDb ? {} : { dbName: process.env.DB_NAME || 'academiasync' };
-    const conn = await mongoose.connect(uri, options);
+    const targetDb = process.env.DB_NAME || 'academiasync';
+    const conn = await mongoose.connect(uri, { dbName: targetDb });
     console.log(`✅ MongoDB Connected: ${conn.connection.host} [DB: ${conn.connection.name}]`);
+
+    if (conn.connection.name !== targetDb) {
+      console.warn(`⚠️  WARNING: Connected to database "${conn.connection.name}" instead of expected "${targetDb}".`);
+    }
 
     // Auto-seed if database is brand new and has no users
     const userCount = await User.countDocuments();

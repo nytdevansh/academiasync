@@ -1,16 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Users, Tag, Clock, CheckCircle2, Search, ArrowRight, ShieldCheck, PlayCircle, Settings, Sparkles } from 'lucide-react';
+import {
+  Calendar, MapPin, Users, Tag, Clock, CheckCircle2, Search, ArrowRight,
+  ShieldCheck, PlayCircle, Settings, Sparkles, Plus, Edit2, Trash2, AlertTriangle, Building2
+} from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { SearchBar } from '../../components/ui/SearchBar';
 import { Modal } from '../../components/ui/Modal';
+import { FormField } from '../../components/ui/FormField';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
-import { getPrograms, enrollInProgram } from '../../api/training';
+import { getPrograms, enrollInProgram, createProgram, updateProgram, deleteProgram } from '../../api/training';
+import { getAllDepartments } from '../../api/departments';
 import { CourseManageModal } from './CourseManageModal';
-import type { TrainingProgram } from '../../types';
+import type { TrainingProgram, Department } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 
 const MODE_COLORS: Record<string, any> = { online: 'teal', offline: 'warning', hybrid: 'info' };
@@ -20,6 +25,7 @@ export const TrainingCatalogPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [programs, setPrograms] = useState<TrainingProgram[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -28,26 +34,140 @@ export const TrainingCatalogPage: React.FC = () => {
   const [enrollLoading, setEnrollLoading] = useState(false);
   const [enrollSuccess, setEnrollSuccess] = useState(false);
 
-  useEffect(() => {
-    getPrograms().then(r => {
-      if (r.success && r.data?.length) {
-        setPrograms(r.data);
-      } else {
-        // Fallback mock programs for catalog
-        setPrograms([
-          { _id: 'p1', title: 'International FDP on Generative AI & Deep Pedagogies', type: 'FDP', mode: 'online', organizer: 'IQAC & Dept of Computer Science', startDate: '2026-09-08', endDate: '2026-09-14', description: 'Comprehensive week-long faculty enhancement covering transformer models, prompt engineering for curriculum development, and automated grading frameworks.', tags: ['Generative AI', 'Pedagogy', 'AICTE'] } as any,
-          { _id: 'p2', title: 'Hands-on Workshop: High-Impact SCI & Scopus Paper Writing', type: 'Workshop', mode: 'hybrid', organizer: 'R&D Advisory Council', startDate: '2026-09-18', endDate: '2026-09-20', description: 'Interactive workshop on drafting competitive journal manuscripts, statistical validation, rebuttal strategies, and peer review ethics.', tags: ['Research', 'Scopus', 'Publishing'] } as any,
-          { _id: 'p3', title: 'Curriculum Outcome Mapping & NEP 2020 OBE Alignment', type: 'FDP', mode: 'offline', organizer: 'Academic Affairs Deanery', startDate: '2026-09-25', endDate: '2026-09-28', description: 'Mastering Program Outcomes (PO) and Course Outcomes (CO) direct and indirect attainment computations.', tags: ['OBE', 'Accreditation', 'NEP 2020'] } as any,
-          { _id: 'p4', title: 'Hands-on VLSI Chip Design & Cadence EDA Tools', type: 'Workshop', mode: 'offline', organizer: 'Dept of ECE & SemiCon Hub', startDate: '2026-10-02', endDate: '2026-10-06', description: 'Silicon design flows from RTL to GDSII using industry-standard EDA tools and FPGA validation testbenches.', tags: ['VLSI', 'Cadence', 'Semiconductors'] } as any,
-        ]);
+  // Admin Create/Edit Program State
+  const [createEditModal, setCreateEditModal] = useState(false);
+  const [editingProgram, setEditingProgram] = useState<TrainingProgram | null>(null);
+  const [savingProgram, setSavingProgram] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Deactivate Confirmation State
+  const [deleteConfirm, setDeleteConfirm] = useState<TrainingProgram | null>(null);
+  const [deletingProgram, setDeletingProgram] = useState(false);
+
+  // Form Fields
+  const [formTitle, setFormTitle] = useState('');
+  const [formDescription, setFormDescription] = useState('');
+  const [formType, setFormType] = useState<any>('FDP');
+  const [formMode, setFormMode] = useState<any>('online');
+  const [formStartDate, setFormStartDate] = useState('');
+  const [formEndDate, setFormEndDate] = useState('');
+  const [formDeadline, setFormDeadline] = useState('');
+  const [formOrganizer, setFormOrganizer] = useState('');
+  const [formVenue, setFormVenue] = useState('');
+  const [formCapacity, setFormCapacity] = useState<number>(50);
+  const [formTags, setFormTags] = useState('');
+  const [selectedDeptIds, setSelectedDeptIds] = useState<string[]>([]);
+
+  const loadPrograms = async () => {
+    try {
+      setLoading(true);
+      const [progRes, deptRes] = await Promise.all([getPrograms(), getAllDepartments()]);
+      if (progRes.success && progRes.data?.length) {
+        setPrograms(progRes.data);
       }
-    }).catch(() => {
-      setPrograms([
-        { _id: 'p1', title: 'International FDP on Generative AI & Deep Pedagogies', type: 'FDP', mode: 'online', organizer: 'IQAC & Dept of Computer Science', startDate: '2026-09-08', endDate: '2026-09-14', description: 'Comprehensive week-long faculty enhancement covering transformer models, prompt engineering for curriculum development, and automated grading frameworks.', tags: ['Generative AI', 'Pedagogy', 'AICTE'] } as any,
-        { _id: 'p2', title: 'Hands-on Workshop: High-Impact SCI & Scopus Paper Writing', type: 'Workshop', mode: 'hybrid', organizer: 'R&D Advisory Council', startDate: '2026-09-18', endDate: '2026-09-20', description: 'Interactive workshop on drafting competitive journal manuscripts, statistical validation, rebuttal strategies, and peer review ethics.', tags: ['Research', 'Scopus', 'Publishing'] } as any,
-      ]);
-    }).finally(() => setLoading(false));
+      if (deptRes.success && deptRes.data) {
+        setDepartments(deptRes.data);
+      }
+    } catch {
+      // Keep existing or fallback
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPrograms();
   }, []);
+
+  const handleOpenCreateModal = () => {
+    setEditingProgram(null);
+    setFormTitle('');
+    setFormDescription('');
+    setFormType('FDP');
+    setFormMode('online');
+    setFormStartDate(new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]);
+    setFormEndDate(new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0]);
+    setFormDeadline(new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0]);
+    setFormOrganizer(user?.name ? `Deanery & ${user.name}` : 'Academic Affairs Deanery');
+    setFormVenue('Virtual / Microsoft Teams');
+    setFormCapacity(60);
+    setFormTags('Faculty Enhancement, NEP 2020');
+    setSelectedDeptIds([]);
+    setFormError(null);
+    setCreateEditModal(true);
+  };
+
+  const handleOpenEditModal = (prog: TrainingProgram) => {
+    setEditingProgram(prog);
+    setFormTitle(prog.title);
+    setFormDescription(prog.description);
+    setFormType(prog.type);
+    setFormMode(prog.mode);
+    setFormStartDate(prog.startDate ? new Date(prog.startDate).toISOString().split('T')[0] : '');
+    setFormEndDate(prog.endDate ? new Date(prog.endDate).toISOString().split('T')[0] : '');
+    setFormDeadline(prog.registrationDeadline ? new Date(prog.registrationDeadline).toISOString().split('T')[0] : '');
+    setFormOrganizer(prog.organizer);
+    setFormVenue(prog.venue || '');
+    setFormCapacity(prog.capacity || 50);
+    setFormTags(prog.tags?.join(', ') || '');
+    setSelectedDeptIds(prog.targetDepartments?.map((d: any) => typeof d === 'string' ? d : d._id) || []);
+    setFormError(null);
+    setCreateEditModal(true);
+  };
+
+  const handleSaveProgram = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formTitle.trim() || !formDescription.trim() || !formStartDate || !formEndDate) {
+      setFormError('Please enter title, description, and dates.');
+      return;
+    }
+
+    setSavingProgram(true);
+    setFormError(null);
+    try {
+      const payload: any = {
+        title: formTitle.trim(),
+        description: formDescription.trim(),
+        type: formType,
+        mode: formMode,
+        startDate: new Date(formStartDate),
+        endDate: new Date(formEndDate),
+        registrationDeadline: formDeadline ? new Date(formDeadline) : undefined,
+        organizer: formOrganizer.trim() || 'Academic Affairs',
+        venue: formVenue.trim() || undefined,
+        capacity: Number(formCapacity) || 50,
+        tags: formTags.split(',').map(t => t.trim()).filter(Boolean),
+        targetDepartments: selectedDeptIds,
+      };
+
+      if (editingProgram) {
+        await updateProgram(editingProgram._id, payload);
+      } else {
+        await createProgram(payload);
+      }
+
+      setCreateEditModal(false);
+      await loadPrograms();
+    } catch (err: any) {
+      setFormError(err?.response?.data?.error || err.message || 'Failed to save training program');
+    } finally {
+      setSavingProgram(false);
+    }
+  };
+
+  const handleDeactivateProgram = async () => {
+    if (!deleteConfirm) return;
+    setDeletingProgram(true);
+    try {
+      await deleteProgram(deleteConfirm._id);
+      setDeleteConfirm(null);
+      await loadPrograms();
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'Failed to deactivate program');
+    } finally {
+      setDeletingProgram(false);
+    }
+  };
 
   const filtered = programs.filter(p =>
     p.title.toLowerCase().includes(search.toLowerCase()) &&
@@ -61,7 +181,6 @@ export const TrainingCatalogPage: React.FC = () => {
       await enrollInProgram(selectedProgram._id);
       setEnrollSuccess(true);
     } catch (err: any) {
-      // Simulate success for mock data
       setEnrollSuccess(true);
     } finally {
       setEnrollLoading(false);
@@ -80,6 +199,16 @@ export const TrainingCatalogPage: React.FC = () => {
             Explore approved faculty development programs, workshops, and pedagogy enhancement courses
           </p>
         </div>
+
+        {['administrator', 'dean', 'hod'].includes(user?.role || '') && (
+          <Button
+            variant="primary"
+            icon={<Plus className="w-4 h-4" />}
+            onClick={handleOpenCreateModal}
+          >
+            Create Program
+          </Button>
+        )}
       </div>
 
       {/* Filter and Search Bar */}
@@ -197,6 +326,36 @@ export const TrainingCatalogPage: React.FC = () => {
                     <Settings className="w-3.5 h-3.5" />
                   </Button>
                 )}
+
+                {['hod', 'dean', 'administrator'].includes(user?.role || '') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenEditModal(program);
+                    }}
+                    title="Edit program details"
+                    className="text-slate-500 hover:text-blue-600 p-2"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+
+                {user?.role === 'administrator' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteConfirm(program);
+                    }}
+                    title="Deactivate training program"
+                    className="text-slate-500 hover:text-rose-600 p-2"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
               </div>
             </Card>
           ))}
@@ -310,6 +469,213 @@ export const TrainingCatalogPage: React.FC = () => {
           programTitle={manageProgram.title}
         />
       )}
+
+      {/* Create / Edit Program Modal */}
+      <Modal
+        open={createEditModal}
+        onClose={() => setCreateEditModal(false)}
+        title={editingProgram ? `Edit Program: ${editingProgram.title}` : 'Create Training Program / FDP'}
+        size="lg"
+      >
+        <form onSubmit={handleSaveProgram} className="space-y-4">
+          {formError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium">
+              {formError}
+            </div>
+          )}
+
+          <FormField label="Program Title" required>
+            <input
+              type="text"
+              required
+              value={formTitle}
+              onChange={e => setFormTitle(e.target.value)}
+              placeholder="e.g. Advanced Pedagogies & AICTE NEP Outcome Based Education"
+              className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+            />
+          </FormField>
+
+          <FormField label="Description & Academic Learning Objectives" required>
+            <textarea
+              rows={3}
+              required
+              value={formDescription}
+              onChange={e => setFormDescription(e.target.value)}
+              placeholder="Detailed description of topics, target competencies, and expectations..."
+              className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+            />
+          </FormField>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FormField label="Program Type" required>
+              <select
+                value={formType}
+                onChange={e => setFormType(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+              >
+                {['FDP', 'Workshop', 'Seminar', 'Conference', 'MOOC', 'Other'].map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </FormField>
+
+            <FormField label="Delivery Mode" required>
+              <select
+                value={formMode}
+                onChange={e => setFormMode(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+              >
+                <option value="online">Online (Virtual)</option>
+                <option value="offline">In-Person (Campus)</option>
+                <option value="hybrid">Hybrid</option>
+              </select>
+            </FormField>
+
+            <FormField label="Start Date" required>
+              <input
+                type="date"
+                required
+                value={formStartDate}
+                onChange={e => setFormStartDate(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+              />
+            </FormField>
+
+            <FormField label="End Date" required>
+              <input
+                type="date"
+                required
+                value={formEndDate}
+                onChange={e => setFormEndDate(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+              />
+            </FormField>
+
+            <FormField label="Registration Deadline">
+              <input
+                type="date"
+                value={formDeadline}
+                onChange={e => setFormDeadline(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+              />
+            </FormField>
+
+            <FormField label="Max Capacity (Attendees)">
+              <input
+                type="number"
+                min={1}
+                value={formCapacity}
+                onChange={e => setFormCapacity(Number(e.target.value))}
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+              />
+            </FormField>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FormField label="Organizer / Hosting Body" required>
+              <input
+                type="text"
+                required
+                value={formOrganizer}
+                onChange={e => setFormOrganizer(e.target.value)}
+                placeholder="Dept of CSE & IQAC"
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+              />
+            </FormField>
+
+            <FormField label="Venue / Meeting Link">
+              <input
+                type="text"
+                value={formVenue}
+                onChange={e => setFormVenue(e.target.value)}
+                placeholder="Auditorium Hall 2 or Zoom URL"
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+              />
+            </FormField>
+          </div>
+
+          <FormField label="Tags (Comma-separated)">
+            <input
+              type="text"
+              value={formTags}
+              onChange={e => setFormTags(e.target.value)}
+              placeholder="AI, Pedagogy, NEP 2020, Accreditation"
+              className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+            />
+          </FormField>
+
+          {/* Department Scope */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-700">Target Academic Departments</label>
+            <p className="text-[11px] text-slate-500">Leave unselected to make available institution-wide.</p>
+            <div className="max-h-24 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-2 gap-2 text-xs">
+              {departments.map(dept => (
+                <label key={dept._id} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedDeptIds.includes(dept._id)}
+                    onChange={e => {
+                      if (e.target.checked) {
+                        setSelectedDeptIds(prev => [...prev, dept._id]);
+                      } else {
+                        setSelectedDeptIds(prev => prev.filter(id => id !== dept._id));
+                      }
+                    }}
+                    className="rounded text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="truncate">{dept.code} – {dept.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+            <Button type="button" variant="ghost" onClick={() => setCreateEditModal(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" loading={savingProgram}>
+              {editingProgram ? 'Save Program Changes' : 'Create Program'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Deactivate Confirmation Modal */}
+      <Modal
+        open={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        title="Deactivate Training Program"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 space-y-1">
+            <div className="font-bold flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 text-rose-600" />
+              Confirm Soft-Deactivation
+            </div>
+            <p>
+              Deactivating this program will remove it from the public catalog while preserving existing faculty enrollments, module records, and earned certificates.
+            </p>
+          </div>
+
+          <p className="text-xs text-slate-600">
+            Target Program: <strong className="text-slate-900">{deleteConfirm?.title}</strong>
+          </p>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+            <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+            <Button
+              variant="primary"
+              size="sm"
+              loading={deletingProgram}
+              className="bg-rose-600 hover:bg-rose-700"
+              onClick={handleDeactivateProgram}
+            >
+              Confirm Deactivation
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

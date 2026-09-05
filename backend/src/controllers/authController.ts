@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import User, { IUser } from '../models/User';
 import RefreshToken from '../models/RefreshToken';
+import Notification from '../models/Notification';
 import { logAudit } from '../services/auditService';
 import { AuthRequest } from '../middlewares/auth';
 
@@ -278,3 +279,42 @@ export const refreshToken = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+/**
+ * Public endpoint for submitting campus contact inquiries.
+ * Dispatches an in-app institutional notification to administrators.
+ */
+export const submitContactInquiry = async (req: Request, res: Response) => {
+  try {
+    const { name, email, subject, message, role } = req.body;
+    if (!name || !email || !subject || !message) {
+      return res.status(400).json({ success: false, error: 'Name, email, subject, and message are required' });
+    }
+
+    const ticketId = `INQ-${Date.now().toString(36).toUpperCase()}`;
+
+    // Notify active administrators
+    const admins = await User.find({ role: 'administrator', status: 'active' }).select('_id');
+    const notifPromises = admins.map((admin) =>
+      Notification.create({
+        userId: admin._id,
+        type: 'system',
+        title: `Campus Inquiry [${ticketId}]: ${subject}`,
+        message: `Inquiry from ${name} (${email}, Role: ${role || 'Visitor'}): "${message.slice(0, 140)}${message.length > 140 ? '...' : ''}"`,
+        status: 'unread',
+      })
+    );
+    await Promise.allSettled(notifPromises);
+
+    res.status(201).json({
+      success: true,
+      data: {
+        ticketId,
+        message: 'Your inquiry has been submitted successfully to University Administration.',
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+

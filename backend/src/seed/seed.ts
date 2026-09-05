@@ -1,4 +1,6 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
@@ -12,6 +14,7 @@ import SkillArea from '../models/SkillArea';
 import FacultyProfile from '../models/FacultyProfile';
 import TrainingProgram from '../models/TrainingProgram';
 import TrainingEnrollment from '../models/TrainingEnrollment';
+import TrainingSession from '../models/TrainingSession';
 import AppraisalCycle from '../models/AppraisalCycle';
 import CompetencyRecord from '../models/CompetencyRecord';
 import Assessment from '../models/Assessment';
@@ -20,18 +23,17 @@ import CourseResult from '../models/CourseResult';
 import Certificate from '../models/Certificate';
 import CourseAssessment from '../models/CourseAssessment';
 import CourseAssessmentSubmission from '../models/CourseAssessmentSubmission';
-import { issueCertificate } from '../services/certificateService';
-
 const hash = async (pw: string) => bcrypt.hash(pw, await bcrypt.genSalt(12));
 
 export const seedData = async () => {
 
   // Clear existing data
-  console.log('🗑  Clearing existing seed data...');
+  console.log('🗑  Clearing existing collections...');
   await Promise.all([
     User.deleteMany({}), Department.deleteMany({}), Subject.deleteMany({}),
     SkillArea.deleteMany({}), FacultyProfile.deleteMany({}),
     TrainingProgram.deleteMany({}), TrainingEnrollment.deleteMany({}),
+    TrainingSession.deleteMany({}),
     AppraisalCycle.deleteMany({}), CompetencyRecord.deleteMany({}),
     Assessment.deleteMany({}), AssessmentResponse.deleteMany({}),
     CourseResult.deleteMany({}), Certificate.deleteMany({}),
@@ -56,29 +58,20 @@ export const seedData = async () => {
     { name: 'Fine Arts & Design', code: 'ARTS', description: 'Visual Arts, Product Design' },
   ]);
 
-  // ── Users ────────────────────────────────────────────────────────────────────
-  console.log('👤  Seeding users into designated department directories...');
+  // ── Users: Single Administrator ──────────────────────────────────────────────
+  console.log('👤  Seeding single system administrator...');
   const adminHash = await hash('Admin@123');
-  const hodHash   = await hash('Hod@123');
-  const deanHash  = await hash('Dean@123');
-  const hrHash    = await hash('Hr@123');
-  const facHash   = await hash('Faculty@123');
 
-  const [admin, hodCSE, hodECE, dean, hr, fac1, fac2, fac3, fac4] = await User.insertMany([
-    { name: 'Admin User', email: 'admin@academiasync.edu', passwordHash: adminHash, role: 'administrator', department: adminDept._id, status: 'active' },
-    { name: 'Dr. Kavitha Ramesh', email: 'hod.cse@academiasync.edu', passwordHash: hodHash, role: 'hod', department: cse._id, status: 'active' },
-    { name: 'Dr. Rajan Pillai', email: 'hod.ece@academiasync.edu', passwordHash: hodHash, role: 'hod', department: ece._id, status: 'active' },
-    { name: 'Dr. Suresh Menon', email: 'dean@academiasync.edu', passwordHash: deanHash, role: 'dean', department: acadDept._id, status: 'active' },
-    { name: 'Priya Nair', email: 'hr@academiasync.edu', passwordHash: hrHash, role: 'hr', department: hrDept._id, status: 'active' },
-    { name: 'Dr. Arjun Krishnan', email: 'faculty@academiasync.edu', passwordHash: facHash, role: 'faculty_member', department: cse._id, status: 'active' },
-    { name: 'Ms. Divya Thomas', email: 'faculty2@academiasync.edu', passwordHash: facHash, role: 'faculty_member', department: ece._id, status: 'active' },
-    { name: 'Mr. Rahul Sharma', email: 'faculty3@academiasync.edu', passwordHash: facHash, role: 'faculty_member', department: cse._id, status: 'active' },
-    { name: 'Dr. Anitha George', email: 'faculty4@academiasync.edu', passwordHash: facHash, role: 'faculty_member', department: mech._id, status: 'active' },
+  const [admin] = await User.insertMany([
+    {
+      name: 'System Administrator',
+      email: 'admin@academiasync.edu',
+      passwordHash: adminHash,
+      role: 'administrator',
+      department: adminDept._id,
+      status: 'active',
+    },
   ]);
-
-  // Update HOD refs in departments
-  await Department.findByIdAndUpdate(cse._id, { hodRef: hodCSE._id });
-  await Department.findByIdAndUpdate(ece._id, { hodRef: hodECE._id });
 
   // ── Subjects ─────────────────────────────────────────────────────────────────
   console.log('📚  Seeding subjects...');
@@ -127,55 +120,15 @@ export const seedData = async () => {
     { name: 'Administration & Leadership', description: 'Committee work, mentoring, departmental administration', category: 'Leadership', order: 5 },
   ]);
 
-  // ── Faculty Profiles ─────────────────────────────────────────────────────────
-  console.log('👨‍🏫  Seeding faculty profiles...');
-  await FacultyProfile.insertMany([
-    {
-      userId: admin._id,
-      bio: 'Chief Administrator overseeing institutional systems, faculty governance, and security operations.',
-      qualifications: [{ degree: 'M.Tech', institution: 'IIT Delhi', year: 2010, specialization: 'Information Systems' }],
-      experience: [{ institution: 'AcademiaSync University', role: 'Chief Administrator', fromYear: 2015, isCurrent: true }],
-      profileCompleteness: 100,
-    },
-    {
-      userId: dean._id,
-      bio: 'Dean of Academic Affairs guiding university accreditation, faculty competency, and academic policy.',
-      qualifications: [{ degree: 'Ph.D', institution: 'IISc Bangalore', year: 2005, specialization: 'Computer Science' }],
-      experience: [{ institution: 'AcademiaSync University', role: 'Dean of Academic Affairs', fromYear: 2012, isCurrent: true }],
-      profileCompleteness: 100,
-    },
-    {
-      userId: hr._id,
-      bio: 'Head of Human Resources managing faculty development, appraisal workflows, and institutional compliance.',
-      qualifications: [{ degree: 'MBA HR', institution: 'XLRI Jamshedpur', year: 2014, specialization: 'Human Resource Management' }],
-      experience: [{ institution: 'AcademiaSync University', role: 'Head of HR', fromYear: 2018, isCurrent: true }],
-      profileCompleteness: 95,
-    },
-    {
-      userId: fac1._id,
-      bio: 'Experienced faculty in AI and Machine Learning with 8+ years of teaching and research experience.',
-      qualifications: [{ degree: 'Ph.D', institution: 'IIT Madras', year: 2015, specialization: 'Artificial Intelligence' }, { degree: 'M.Tech', institution: 'NIT Trichy', year: 2010, specialization: 'Computer Science' }],
-      experience: [{ institution: 'AcademiaSync University', role: 'Assistant Professor', fromYear: 2015, isCurrent: true }],
-      certifications: [{ name: 'Google Cloud Professional ML Engineer', issuingBody: 'Google', issueDate: new Date('2023-06-01') }],
-      accomplishments: [{ title: 'Best Paper Award', description: 'IEEE Conference on ML 2022', date: new Date('2022-11-15'), category: 'Research' }],
-      subjectsTaught: [subjects[0]._id, subjects[2]._id],
-      researchAreas: ['Deep Learning', 'NLP', 'Computer Vision'],
-      profileCompleteness: 90,
-    },
-    {
-      userId: fac2._id,
-      bio: 'Specialist in VLSI and embedded systems with industry experience at Qualcomm.',
-      qualifications: [{ degree: 'M.Tech', institution: 'IISc Bangalore', year: 2012, specialization: 'VLSI Design' }],
-      experience: [{ institution: 'Qualcomm', role: 'Senior Engineer', fromYear: 2012, toYear: 2018, isCurrent: false }, { institution: 'AcademiaSync University', role: 'Assistant Professor', fromYear: 2018, isCurrent: true }],
-      subjectsTaught: [subjects[7]._id, subjects[8]._id],
-      researchAreas: ['VLSI', 'IoT', 'Embedded AI'],
-      profileCompleteness: 75,
-    },
-    { userId: hodCSE._id, qualifications: [{ degree: 'Ph.D', institution: 'IIT Bombay', year: 2008, specialization: 'Systems Engineering' }], experience: [{ institution: 'AcademiaSync University', role: 'Professor & HOD', fromYear: 2008, isCurrent: true }], profileCompleteness: 85 },
-    { userId: hodECE._id, qualifications: [{ degree: 'Ph.D', institution: 'IIT Madras', year: 2009, specialization: 'Telecommunications' }], experience: [{ institution: 'AcademiaSync University', role: 'Professor & HOD', fromYear: 2009, isCurrent: true }], profileCompleteness: 85 },
-    { userId: fac3._id, qualifications: [{ degree: 'M.Tech', institution: 'Anna University', year: 2018, specialization: 'Web Technologies' }], experience: [{ institution: 'AcademiaSync University', role: 'Assistant Professor', fromYear: 2019, isCurrent: true }], profileCompleteness: 50 },
-    { userId: fac4._id, qualifications: [{ degree: 'Ph.D', institution: 'NIT Calicut', year: 2016, specialization: 'Thermal Engineering' }], experience: [{ institution: 'AcademiaSync University', role: 'Associate Professor', fromYear: 2016, isCurrent: true }], profileCompleteness: 80 },
-  ]);
+  // ── Faculty Profile (Administrator) ──────────────────────────────────────────
+  console.log('👨‍🏫  Seeding administrator profile...');
+  await FacultyProfile.create({
+    userId: admin._id,
+    bio: 'Chief Administrator overseeing institutional systems, faculty governance, and security operations.',
+    qualifications: [{ degree: 'M.Tech', institution: 'IIT Delhi', year: 2010, specialization: 'Information Systems' }],
+    experience: [{ institution: 'AcademiaSync University', role: 'Chief Administrator', fromYear: 2015, isCurrent: true }],
+    profileCompleteness: 100,
+  });
 
   // ── Training Programs ────────────────────────────────────────────────────────
   console.log('🎓  Seeding training programs & course assessments...');
@@ -283,69 +236,49 @@ export const seedData = async () => {
 
   await TrainingProgram.findByIdAndUpdate(tp1._id, { assessmentId: courseAssessment._id });
 
-  // ── Training Enrollments ─────────────────────────────────────────────────────
-  console.log('📝  Seeding enrollments & certificates...');
-  const [enr1, enr2, enr3, enr4, enr5] = await TrainingEnrollment.insertMany([
+  // ── Training Sessions (Multi-Session Schedule) ──────────────────────────────
+  console.log('📅  Seeding training program scheduled sessions...');
+  await TrainingProgram.findByIdAndUpdate(tp1._id, { hasScheduledSessions: true });
+  await TrainingProgram.findByIdAndUpdate(tp2._id, { hasScheduledSessions: true });
+
+  await TrainingSession.insertMany([
     {
-      userId: fac1._id,
       programId: tp1._id,
-      status: 'certified',
-      nominatedBy: fac1._id,
-      approvedBy: hodCSE._id,
-      nominationDate: new Date('2026-08-10'),
-      approvalDate: new Date('2026-08-12'),
-      completionDate: new Date('2026-09-04'),
-      attemptsCount: 1,
-      lastPassedAttemptAt: new Date('2026-09-04'),
+      title: 'Session 1: Transformer Architectures, Attention & Pretraining Dynamics',
+      description: 'Foundations of multi-head attention, positional encodings, and pre-trained LLM pipelines.',
+      scheduledDate: new Date('2026-09-16'),
+      startTime: '10:00 AM',
+      endTime: '01:00 PM',
+      venueOrLink: 'CSE Department Computing Lab 3',
+      organiserId: null,
+      status: 'scheduled',
+      attendees: [],
     },
     {
-      userId: fac1._id,
-      programId: tp2._id,
-      status: 'completed',
-      nominatedBy: fac1._id,
-      approvedBy: hodCSE._id,
-      nominationDate: new Date('2026-07-01'),
-      completionDate: new Date('2026-07-20'),
-      feedback: { rating: 5, comments: 'Excellent workshop!', learningOutcome: 'Learned advanced statistical methods for research.' },
-      certificateUrl: 'https://example.com/cert/fac1-workshop',
+      programId: tp1._id,
+      title: 'Session 2: Fine-Tuning, LoRA & Prompt Engineering for Pedagogy',
+      description: 'Hands-on instruction on parameter-efficient fine-tuning and curriculum-tailored prompt templates.',
+      scheduledDate: new Date('2026-09-23'),
+      startTime: '10:00 AM',
+      endTime: '01:00 PM',
+      venueOrLink: 'CSE Department Computing Lab 3 & Hybrid Stream',
+      organiserId: null,
+      status: 'scheduled',
+      attendees: [],
     },
-    { userId: fac2._id, programId: tp1._id, status: 'nominated', nominatedBy: fac2._id, nominationDate: new Date('2026-08-15') },
-    { userId: fac3._id, programId: tp3._id, status: 'approved', nominatedBy: fac3._id, approvedBy: hodCSE._id, nominationDate: new Date('2026-09-05') },
-    { userId: fac4._id, programId: tp4._id, status: 'nominated', nominatedBy: fac4._id, nominationDate: new Date('2026-08-20') },
+    {
+      programId: tp2._id,
+      title: 'Session 1: High-Impact SCI & Scopus Paper Framing & Structure',
+      description: 'Peer-reviewed manuscript structural standards, literature review matrices, and rebuttal strategies.',
+      scheduledDate: new Date('2026-09-18'),
+      startTime: '02:00 PM',
+      endTime: '05:00 PM',
+      venueOrLink: 'R&D Advisory Council Seminar Hall A',
+      organiserId: null,
+      status: 'scheduled',
+      attendees: [],
+    },
   ]);
-
-  // Create CourseResult and Certificate for fac1 on tp1
-  const seededResult = await CourseResult.create({
-    enrollmentId: enr1._id,
-    teacherId: fac1._id,
-    courseId: tp1._id,
-    assessmentId: courseAssessment._id,
-    attemptNumber: 1,
-    score: 100,
-    totalScore: 30,
-    maxPossibleScore: 30,
-    passingScore: 60,
-    passed: true,
-    status: 'graded',
-    answers: [
-      { questionIndex: 0, prompt: 'Which loss function is most commonly used in multi-class classification problems?', type: 'mcq', selectedOption: 1, score: 10, maxScore: 10, feedback: 'Correct', isCorrect: true },
-      { questionIndex: 1, prompt: 'What is the primary role of dropout layers in deep neural network architectures?', type: 'mcq', selectedOption: 1, score: 10, maxScore: 10, feedback: 'Correct', isCorrect: true },
-      { questionIndex: 2, prompt: 'In supervised learning, what does the validation set primarily serve to evaluate?', type: 'mcq', selectedOption: 1, score: 10, maxScore: 10, feedback: 'Correct', isCorrect: true },
-    ],
-    completedAt: new Date('2026-09-04'),
-  });
-
-  const seededCert = await issueCertificate({
-    teacher: fac1,
-    course: tp1,
-    enrollmentId: enr1._id,
-    resultId: seededResult._id,
-    departmentName: 'Computer Science & Engineering',
-    departmentCode: 'CSE',
-  });
-
-  await TrainingEnrollment.findByIdAndUpdate(enr1._id, { certificateId: seededCert._id });
-  await CourseResult.findByIdAndUpdate(seededResult._id, { certificateId: seededCert._id });
 
   // ── Appraisal Cycle ──────────────────────────────────────────────────────────
   console.log('📊  Seeding appraisal cycle...');
@@ -366,18 +299,8 @@ export const seedData = async () => {
     status: 'active',
   });
 
-  // ── Competency Records ───────────────────────────────────────────────────────
-  console.log('🔬  Seeding competency records...');
-  await CompetencyRecord.insertMany([
-    { userId: fac1._id, skillArea: teachSkill._id, currentLevel: 'advanced', targetLevel: 'expert', lastAssessedDate: new Date(), gapsIdentified: ['Active learning techniques'] },
-    { userId: fac1._id, skillArea: resSkill._id, currentLevel: 'proficient', targetLevel: 'advanced', lastAssessedDate: new Date() },
-    { userId: fac1._id, skillArea: ictSkill._id, currentLevel: 'expert', targetLevel: 'expert', lastAssessedDate: new Date() },
-    { userId: fac2._id, skillArea: teachSkill._id, currentLevel: 'proficient', targetLevel: 'advanced', lastAssessedDate: new Date() },
-    { userId: fac2._id, skillArea: indSkill._id, currentLevel: 'advanced', targetLevel: 'expert', lastAssessedDate: new Date() },
-  ]);
-
   // ── Custom Assessments & Surveys ─────────────────────────────────────────────
-  console.log('📋  Seeding custom assessments & surveys...');
+  console.log('📋  Seeding institutional assessments & surveys...');
   const qAI1 = new mongoose.Types.ObjectId();
   const qAI2 = new mongoose.Types.ObjectId();
   const qAI3 = new mongoose.Types.ObjectId();
@@ -392,13 +315,13 @@ export const seedData = async () => {
   const qE2 = new mongoose.Types.ObjectId();
   const qE3 = new mongoose.Types.ObjectId();
 
-  const [assessmentAI, assessmentSurvey, assessmentEthics] = await Assessment.insertMany([
+  await Assessment.insertMany([
     {
       title: 'AI Pedagogy & Generative AI Ethics in Higher Ed',
       description: 'Institutional assessment on modern AI tooling, syllabus integration, formative viva evaluations, and contract cheating deterrence.',
       topic: 'AI & Pedagogy',
-      createdBy: hodCSE._id,
-      createdByRole: 'hod',
+      createdBy: admin._id,
+      createdByRole: 'administrator',
       targetScope: { type: 'department', targetIds: [cse._id] },
       questions: [
         {
@@ -454,8 +377,8 @@ export const seedData = async () => {
       title: 'Curriculum Modernization & Lab Readiness Survey',
       description: 'Campus-wide anonymous faculty survey evaluating laboratory computing equipment, software licensing, and industry alignment.',
       topic: 'Infrastructure & Curriculum',
-      createdBy: dean._id,
-      createdByRole: 'dean',
+      createdBy: admin._id,
+      createdByRole: 'administrator',
       targetScope: { type: 'all' },
       questions: [
         {
@@ -546,139 +469,46 @@ export const seedData = async () => {
     },
   ]);
 
-  // ── Seed Assessment Responses ────────────────────────────────────────────────
-  console.log('📝  Seeding assessment responses...');
-  await AssessmentResponse.insertMany([
-    // fac1 response to AI Pedagogy (graded & reviewed)
-    {
-      assessmentId: assessmentAI._id,
-      facultyId: fac1._id,
-      attemptNumber: 1,
-      answers: [
-        { questionId: qAI1, answer: 0, score: 3 },
-        { questionId: qAI2, answer: true, score: 2 },
-        { questionId: qAI3, answer: 4, score: 0 },
-        {
-          questionId: qAI4,
-          answer: 'We require students to submit recorded 3-minute code walkthroughs, followed by randomized parameter variations during live lab sessions to verify true understanding.',
-          score: 5,
-          feedback: 'Outstanding pedagogical framework with viva-based verification.',
-        },
-      ],
-      totalScore: 10,
-      maxScore: 10,
-      status: 'reviewed',
-      startedAt: new Date(Date.now() - 48 * 3600 * 1000),
-      submittedAt: new Date(Date.now() - 47 * 3600 * 1000),
-      timeTakenSeconds: 1120,
-      reviewerNotes: 'Exemplary submission. Recommend sharing this viva rubric across the CSE department.',
-      reviewedBy: hodCSE._id,
-      reviewedAt: new Date(Date.now() - 24 * 3600 * 1000),
-    },
-    // fac3 response to AI Pedagogy (submitted, pending text review)
-    {
-      assessmentId: assessmentAI._id,
-      facultyId: fac3._id,
-      attemptNumber: 1,
-      answers: [
-        { questionId: qAI1, answer: 0, score: 3 },
-        { questionId: qAI2, answer: true, score: 2 },
-        { questionId: qAI3, answer: 3, score: 0 },
-        {
-          questionId: qAI4,
-          answer: 'I use automated unit testing and check Git commit intervals to ensure continuous development.',
-          score: 0,
-        },
-      ],
-      totalScore: 5,
-      maxScore: 10,
-      status: 'submitted',
-      startedAt: new Date(Date.now() - 12 * 3600 * 1000),
-      submittedAt: new Date(Date.now() - 11.5 * 3600 * 1000),
-      timeTakenSeconds: 980,
-    },
-    // fac1 response to Survey
-    {
-      assessmentId: assessmentSurvey._id,
-      facultyId: fac1._id,
-      attemptNumber: 1,
-      answers: [
-        { questionId: qS1, answer: 4, score: 0 },
-        { questionId: qS2, answer: 3, score: 0 },
-        { questionId: qS3, answer: true, score: 0 },
-        {
-          questionId: qS4,
-          answer: 'Dedicated NVIDIA GPU workstations for deep learning labs and accelerated access to cloud compute clusters.',
-          score: 0,
-        },
-      ],
-      totalScore: 0,
-      maxScore: 0,
-      status: 'reviewed',
-      startedAt: new Date(Date.now() - 36 * 3600 * 1000),
-      submittedAt: new Date(Date.now() - 35.8 * 3600 * 1000),
-      timeTakenSeconds: 420,
-    },
-    // fac2 response to Survey
-    {
-      assessmentId: assessmentSurvey._id,
-      facultyId: fac2._id,
-      attemptNumber: 1,
-      answers: [
-        { questionId: qS1, answer: 5, score: 0 },
-        { questionId: qS2, answer: 4, score: 0 },
-        { questionId: qS3, answer: true, score: 0 },
-        {
-          questionId: qS4,
-          answer: 'Modern FPGA development boards (Xilinx Zynq) and Cadence VLSI layout tool licenses for ECE labs.',
-          score: 0,
-        },
-      ],
-      totalScore: 0,
-      maxScore: 0,
-      status: 'reviewed',
-      startedAt: new Date(Date.now() - 20 * 3600 * 1000),
-      submittedAt: new Date(Date.now() - 19.8 * 3600 * 1000),
-      timeTakenSeconds: 380,
-    },
-    // fac2 response to Ethics benchmark
-    {
-      assessmentId: assessmentEthics._id,
-      facultyId: fac2._id,
-      attemptNumber: 1,
-      answers: [
-        { questionId: qE1, answer: 0, score: 4 },
-        { questionId: qE2, answer: true, score: 3 },
-        {
-          questionId: qE3,
-          answer: 'Invention must be submitted to the University IPR facilitation cell for prior art search and provisional patent filing before presenting at conferences or posting preprints.',
-          score: 3,
-          feedback: 'Accurate process description.',
-        },
-      ],
-      totalScore: 10,
-      maxScore: 10,
-      status: 'reviewed',
-      startedAt: new Date(Date.now() - 15 * 3600 * 1000),
-      submittedAt: new Date(Date.now() - 14.5 * 3600 * 1000),
-      timeTakenSeconds: 890,
-      reviewerNotes: 'Flawless grasp of university patent disclosure protocols.',
-      reviewedBy: admin._id,
-      reviewedAt: new Date(Date.now() - 10 * 3600 * 1000),
-    },
-  ]);
-
-  console.log('\n✅ Seed complete!\n');
+  console.log('\n✅ Seed complete! Single administrator initialized with full institutional master directories.\n');
 };
 
 const runStandalone = async () => {
-  const uri = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGODB_ATLAS_URI;
-  if (!uri) { console.error('❌ MONGO_URI not set in .env'); process.exit(1); }
+  let uri = process.env.MONGO_URI || process.env.MONGODB_ATLAS_URI || process.env.MONGODB_URI;
 
-  await mongoose.connect(uri);
-  console.log('✅ Connected to MongoDB\n');
+  if (!uri) {
+    const atlasPath = path.join(__dirname, '..', '..', 'atlas-credentials.env');
+    if (fs.existsSync(atlasPath)) {
+      dotenv.config({ path: atlasPath });
+      uri = process.env.MONGODB_URI || process.env.MONGO_URI;
+    }
+  }
+
+  if (!uri) {
+    uri = 'mongodb://localhost:27017/academiasync';
+  }
+
+  const targetDb = process.env.DB_NAME || 'academiasync';
+
+  // Enforce targetDb path in connection string if not already present
+  if (!uri.includes(`/${targetDb}`)) {
+    if (uri.includes('?')) {
+      uri = uri.replace(/\/(?:\?|$)/, `/${targetDb}?`);
+    } else {
+      uri = `${uri.replace(/\/$/, '')}/${targetDb}`;
+    }
+  }
+
+  console.log(`🔌 Connecting to MongoDB Instance [Target DB: "${targetDb}"]...`);
+  await mongoose.connect(uri, { dbName: targetDb });
+  console.log(`✅ Connected to MongoDB: ${mongoose.connection.host} [Active DB: "${mongoose.connection.name}"]\n`);
+
+  if (mongoose.connection.name === 'test') {
+    console.warn(`⚠️  WARNING: Connected to "test" database instead of "${targetDb}".`);
+  }
+
   await seedData();
   await mongoose.disconnect();
+  console.log(`🏁 Finished seeding database "${targetDb}". Exiting.`);
   process.exit(0);
 };
 

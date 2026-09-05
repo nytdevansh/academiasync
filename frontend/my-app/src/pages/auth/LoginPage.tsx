@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, GraduationCap, BarChart2, Shield, Users, ArrowRight, Sparkles, CheckCircle2, ChevronDown, ChevronUp, UserCheck, LogOut, KeyRound, AlertTriangle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, GraduationCap, BarChart2, Shield, Users, ArrowRight, UserCheck, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import * as api from '../../api/auth';
 import { Button } from '../../components/ui/Button';
-import { DEMO_CREDENTIALS, ROLE_LABELS } from '../../utils/constants';
+import { ROLE_LABELS } from '../../utils/constants';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -12,10 +12,8 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [quickLoadingRole, setQuickLoadingRole] = useState<string | null>(null);
-  const [showDemoCredentials, setShowDemoCredentials] = useState(true);
 
-  const { isAuthenticated, user, login, logout, quickLogin } = useAuth();
+  const { isAuthenticated, user, login, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -45,51 +43,10 @@ export const LoginPage: React.FC = () => {
       }
       setError(res.error || 'Login failed. Please verify your email and password.');
     } catch (err: any) {
-      // If backend is offline or returned error in demo mode, create seamless fallback session
-      if (email && password) {
-        const matchingDemo = DEMO_CREDENTIALS.find(c => c.email.toLowerCase() === email.toLowerCase());
-        const role = matchingDemo ? (
-          matchingDemo.role.includes('Admin') ? 'administrator' :
-          matchingDemo.role.includes('HOD') ? 'hod' :
-          matchingDemo.role.includes('Dean') ? 'dean' :
-          matchingDemo.role.includes('HR') ? 'hr' : 'faculty_member'
-        ) : 'faculty_member';
-
-        const mockUserData = {
-          _id: 'usr_' + Date.now(),
-          name: matchingDemo ? matchingDemo.role + ' User' : email.split('@')[0],
-          email: email,
-          role: role as any,
-          status: 'active' as const,
-          department: { _id: 'd1', name: 'Computer Science & Engineering', code: 'CSE', isActive: true },
-        };
-        login('jwt_demo_token_' + Date.now(), mockUserData as any);
-        navigate(redirectPath, { replace: true });
-        return;
-      }
       setError(err?.response?.data?.error || 'Invalid credentials. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickLogin = async (roleKey: string) => {
-    setError('');
-    setQuickLoadingRole(roleKey);
-    try {
-      await quickLogin(roleKey);
-      navigate(redirectPath, { replace: true });
-    } catch {
-      setError('Quick login failed. Please try standard sign-in.');
-    } finally {
-      setQuickLoadingRole(null);
-    }
-  };
-
-  const fillCredentials = (cred: { email: string; password: string; role: string }) => {
-    setEmail(cred.email);
-    setPassword(cred.password);
-    setError('');
   };
 
   const features = [
@@ -247,68 +204,7 @@ export const LoginPage: React.FC = () => {
               </Button>
             </form>
 
-            {/* Quick Demo Credentials & 1-Click Login Section */}
-            <div className="pt-4 border-t border-slate-100 space-y-3">
-              <button
-                type="button"
-                onClick={() => setShowDemoCredentials(!showDemoCredentials)}
-                className="flex items-center justify-between w-full text-xs font-bold text-slate-700 hover:text-slate-900 cursor-pointer py-1"
-              >
-                <div className="flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-blue-600" />
-                  <span>Demo Accounts (Auto-Fill & 1-Click Login)</span>
-                </div>
-                {showDemoCredentials ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </button>
-
-              {showDemoCredentials && (
-                <div className="space-y-3 pt-1">
-                  <div className="text-[11px] text-slate-500 font-medium">
-                    Click <strong className="text-slate-700">"Auto Fill"</strong> to populate form fields or <strong className="text-blue-600">"Instant Login"</strong> to enter immediately:
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {[
-                      { role: 'Faculty Member', key: 'faculty', email: 'faculty@academiasync.edu', pass: 'Faculty@123', desc: 'Self-assessment & FDP catalog' },
-                      { role: 'Head of Dept (CSE)', key: 'hod', email: 'hod.cse@academiasync.edu', pass: 'Hod@123', desc: 'FDP approvals & dept gap matrix' },
-                      { role: 'Dean of Academics', key: 'dean', email: 'dean@academiasync.edu', pass: 'Dean@123', desc: 'University-wide appraisal metrics' },
-                      { role: 'HR Manager', key: 'hr', email: 'hr@academiasync.edu', pass: 'Hr@123', desc: 'Faculty records & development' },
-                      { role: 'System Admin', key: 'admin', email: 'admin@academiasync.edu', pass: 'Admin@123', desc: 'Full permissions & audit trail' },
-                    ].map((demo) => (
-                      <div
-                        key={demo.key}
-                        className="p-3 rounded-xl bg-slate-50/80 border border-slate-200/90 flex flex-col justify-between gap-2"
-                      >
-                        <div>
-                          <div className="text-xs font-bold text-slate-900">{demo.role}</div>
-                          <div className="text-[10px] text-slate-500 truncate">{demo.email}</div>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 pt-1">
-                          <button
-                            type="button"
-                            onClick={() => fillCredentials({ email: demo.email, password: demo.pass, role: demo.role })}
-                            className="flex-1 px-2 py-1 text-[10px] font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors cursor-pointer text-center"
-                          >
-                            Auto Fill
-                          </button>
-                          <button
-                            type="button"
-                            disabled={quickLoadingRole !== null}
-                            onClick={() => handleQuickLogin(demo.key)}
-                            className="flex-1 px-2 py-1 text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors cursor-pointer text-center disabled:opacity-50"
-                          >
-                            {quickLoadingRole === demo.key ? 'Signing in...' : 'Instant Login'}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="text-center text-[11px] text-slate-400">
+            <div className="pt-4 border-t border-slate-100 text-center text-[11px] text-slate-400">
               AcademiaSync FES • Secure University Role-Based Access Control
             </div>
           </div>

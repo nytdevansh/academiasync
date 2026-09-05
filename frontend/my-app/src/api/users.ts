@@ -20,3 +20,8 @@ export const deleteUser = async (id: string): Promise<ApiResponse<any>> => {
   const { data } = await axiosInstance.delete(`/users/${id}`);
   return data;
 };
+
+export const resetUserPassword = async (id: string, newPassword: string): Promise<ApiResponse<{ message: string }>> => {
+  const { data } = await axiosInstance.put(`/users/${id}/reset-password`, { newPassword });
+  return data;
+};

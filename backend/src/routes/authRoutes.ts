@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, login, logout, getMe, refreshToken } from '../controllers/authController';
+import { register, login, logout, getMe, refreshToken, submitContactInquiry } from '../controllers/authController';
 import { protect } from '../middlewares/auth';
 import { authLimiter } from '../middlewares/rateLimiter';
 import { validateRequest } from '../middlewares/validateRequest';
@@ -7,9 +7,10 @@ import { registerSchema, loginSchema, refreshTokenSchema } from '../validations/
 
 const router = express.Router();
 
-// Public auth endpoints protected with strict auth rate limiter & Zod validation
+// Public auth & contact endpoints protected with rate limiter
 router.post('/register', authLimiter, validateRequest(registerSchema), register);
 router.post('/login', authLimiter, validateRequest(loginSchema), login);
+router.post('/inquiry', submitContactInquiry);
 
 // Refresh token endpoints (supports /refresh and legacy /refresh-token)
 router.post('/refresh', authLimiter, validateRequest(refreshTokenSchema), refreshToken);

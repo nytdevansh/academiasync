@@ -27,12 +27,18 @@ import { CourseLearningPage } from './pages/training/CourseLearningPage';
 import { CourseGradingPage } from './pages/training/CourseGradingPage';
 import { SessionAttendancePage } from './pages/training/SessionAttendancePage';
 import { CompetencyPage } from './pages/competency/CompetencyPage';
+import { DepartmentGapAnalysisPage } from './pages/competency/DepartmentGapAnalysisPage';
 import { AppraisalListPage } from './pages/appraisal/AppraisalPages';
+import { AppraisalCycleBuilderPage } from './pages/appraisal/AppraisalCycleBuilderPage';
+import { ReviewerAssessmentPage } from './pages/appraisal/ReviewerAssessmentPage';
+import { SubjectManagementPage } from './pages/curriculum/SubjectManagementPage';
+import { RecommendationsPage } from './pages/recommendations/RecommendationsPage';
 import { AssessmentListPage } from './pages/assessments/AssessmentListPage';
 import { TakeAssessmentPage } from './pages/assessments/TakeAssessmentPage';
 import { AssessmentAnalyticsPage } from './pages/assessments/AssessmentAnalyticsPage';
 import { ReportsPage } from './pages/reports/ReportsPage';
 import { UserManagementPage, AuditLogPage } from './pages/admin/AdminPages';
+import { DepartmentManagementPage } from './pages/admin/DepartmentManagementPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 const App: React.FC = () => (
@@ -77,16 +83,19 @@ const App: React.FC = () => (
           <Route path="/assessments/:id/analytics" element={<ProtectedRoute allowedRoles={['hod', 'dean', 'hr', 'administrator']}><AssessmentAnalyticsPage /></ProtectedRoute>} />
 
           <Route path="/competency" element={<CompetencyPage />} />
-          <Route path="/competency/gap-analysis" element={<ProtectedRoute allowedRoles={['hod', 'dean', 'administrator']}><CompetencyPage /></ProtectedRoute>} />
+          <Route path="/competency/gap-analysis" element={<ProtectedRoute allowedRoles={['hod', 'dean', 'administrator']}><DepartmentGapAnalysisPage /></ProtectedRoute>} />
 
           <Route path="/appraisals" element={<AppraisalListPage />} />
-          <Route path="/appraisals/department" element={<ProtectedRoute allowedRoles={['hod', 'dean', 'administrator']}><AppraisalListPage /></ProtectedRoute>} />
-          <Route path="/appraisals/cycles" element={<ProtectedRoute allowedRoles={['administrator']}><AppraisalListPage /></ProtectedRoute>} />
+          <Route path="/appraisals/department" element={<ProtectedRoute allowedRoles={['hod', 'dean', 'administrator']}><ReviewerAssessmentPage /></ProtectedRoute>} />
+          <Route path="/appraisals/cycles" element={<ProtectedRoute allowedRoles={['administrator']}><AppraisalCycleBuilderPage /></ProtectedRoute>} />
+
+          <Route path="/curriculum/subjects" element={<ProtectedRoute allowedRoles={['hod', 'dean', 'administrator']}><SubjectManagementPage /></ProtectedRoute>} />
+          <Route path="/recommendations" element={<ProtectedRoute allowedRoles={['hod', 'dean', 'administrator']}><RecommendationsPage /></ProtectedRoute>} />
 
           <Route path="/reports" element={<ProtectedRoute allowedRoles={['hod', 'dean', 'hr', 'administrator']}><ReportsPage /></ProtectedRoute>} />
 
           <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['administrator']}><UserManagementPage /></ProtectedRoute>} />
-          <Route path="/admin/departments" element={<ProtectedRoute allowedRoles={['administrator']}><UserManagementPage /></ProtectedRoute>} />
+          <Route path="/admin/departments" element={<ProtectedRoute allowedRoles={['administrator']}><DepartmentManagementPage /></ProtectedRoute>} />
           <Route path="/admin/audit" element={<ProtectedRoute allowedRoles={['administrator']}><AuditLogPage /></ProtectedRoute>} />
         </Route>
 

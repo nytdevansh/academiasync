@@ -6,8 +6,18 @@ export const getCycles = async (): Promise<ApiResponse<AppraisalCycle[]>> => {
   return data;
 };
 
+export const getCycleById = async (id: string): Promise<ApiResponse<AppraisalCycle>> => {
+  const { data } = await axiosInstance.get(`/appraisals/cycles/${id}`);
+  return data;
+};
+
 export const createCycle = async (cycle: Partial<AppraisalCycle>): Promise<ApiResponse<AppraisalCycle>> => {
   const { data } = await axiosInstance.post('/appraisals/cycles', cycle);
+  return data;
+};
+
+export const updateCycle = async (id: string, cycle: Partial<AppraisalCycle>): Promise<ApiResponse<AppraisalCycle>> => {
+  const { data } = await axiosInstance.put(`/appraisals/cycles/${id}`, cycle);
   return data;
 };
 

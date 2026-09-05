@@ -16,6 +16,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/appraisals/department': 'Department Appraisal Reviews',
   '/appraisals/cycles': 'Appraisal Cycles Configuration',
   '/reports': 'Institutional Reports & Analytics',
+  '/curriculum/subjects': 'Curriculum & Subject Catalog',
+  '/recommendations': 'Faculty Recommendations & Compliance',
   '/admin/users': 'User Management & Access Control',
   '/admin/departments': 'Academic Departments',
   '/admin/audit': 'System Audit Logs',

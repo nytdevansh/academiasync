@@ -21,6 +21,11 @@ export const updateProgram = async (id: string, updates: Partial<TrainingProgram
   return data;
 };
 
+export const deleteProgram = async (id: string): Promise<ApiResponse<{ message: string }>> => {
+  const { data } = await axiosInstance.delete(`/training/programs/${id}`);
+  return data;
+};
+
 export const enrollInProgram = async (programId: string): Promise<ApiResponse<TrainingEnrollment>> => {
   const { data } = await axiosInstance.post(`/training/programs/${programId}/enroll`);
   return data;

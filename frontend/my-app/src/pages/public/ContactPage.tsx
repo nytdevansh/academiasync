@@ -1,16 +1,34 @@
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Clock, Send, CheckCircle2, Building, MessageSquare } from 'lucide-react';
+import { Mail, Phone, MapPin, Clock, Send, CheckCircle2, Building, MessageSquare, AlertCircle } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { FormField } from '../../components/ui/FormField';
 import { Button } from '../../components/ui/Button';
+import axiosInstance from '../../api/axiosInstance';
 
 export const ContactPage: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
+  const [ticketId, setTicketId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '', role: 'Student' });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const res = await axiosInstance.post('/auth/inquiry', form);
+      if (res.data?.success) {
+        setTicketId(res.data.data?.ticketId || `INQ-${Date.now().toString(36).toUpperCase()}`);
+        setSubmitted(true);
+      } else {
+        setErrorMsg(res.data?.error || 'Failed to submit inquiry');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.error || err.message || 'Failed to send inquiry. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -89,16 +107,28 @@ export const ContactPage: React.FC = () => {
                   <CheckCircle2 className="w-8 h-8" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900">Inquiry Submitted Successfully</h3>
+                {ticketId && (
+                  <div className="inline-block px-3 py-1 bg-slate-100 rounded-lg text-xs font-mono text-slate-700 font-bold border border-slate-200">
+                    Ticket Reference: {ticketId}
+                  </div>
+                )}
                 <p className="text-sm text-slate-500 max-w-md mx-auto">
-                  Thank you for reaching out. A confirmation has been generated and our academic administrative office will respond within 1-2 business days.
+                  Thank you for reaching out. A confirmation has been registered and university administration will review and respond within 1-2 business days.
                 </p>
-                <Button variant="outline" size="md" onClick={() => setSubmitted(false)}>
+                <Button variant="outline" size="md" onClick={() => { setSubmitted(false); setTicketId(null); setForm({ name: '', email: '', subject: '', message: '', role: 'Student' }); }}>
                   Send Another Message
                 </Button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Send an Institutional Inquiry</h3>
+
+                {errorMsg && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField label="Full Name" required>
@@ -162,7 +192,7 @@ export const ContactPage: React.FC = () => {
                   />
                 </FormField>
 
-                <Button type="submit" variant="primary" size="lg" fullWidth icon={<Send className="w-4 h-4" />}>
+                <Button type="submit" variant="primary" size="lg" fullWidth loading={loading} icon={<Send className="w-4 h-4" />}>
                   Submit Official Inquiry
                 </Button>
               </form>
