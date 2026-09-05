@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Edit3, Award, BookOpen, Briefcase, GraduationCap, Plus, Trash2, MapPin, Mail, Sparkles } from 'lucide-react';
+import { Edit3, Award, BookOpen, Briefcase, GraduationCap, Plus, Trash2, MapPin, Mail, Sparkles, ShieldCheck, ExternalLink, Calendar, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -214,19 +214,76 @@ export const ProfilePage: React.FC = () => {
         )}
 
         {activeTab === 'certifications' && (
-          <Card className="space-y-3">
-            <h3 className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100">Professional Certifications</h3>
-            <div className="divide-y divide-slate-100">
-              {profile.certifications?.map((c, i) => (
-                <div key={i} className="py-3 flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900">{c.name}</h4>
-                    <p className="text-[11px] text-slate-500 mt-0.5">{c.issuingBody}</p>
-                  </div>
-                  <span className="text-[11px] text-slate-400">Issued: {new Date(c.issueDate).toLocaleDateString()}</span>
-                </div>
-              ))}
+          <Card className="space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Professional Certifications &amp; Institutional Credentials</h3>
+                <p className="text-[11px] text-slate-500">Chronological timeline of pedagogical certifications, FDP mastery, and external credentials</p>
+              </div>
+              <Badge variant="teal">{profile.certifications?.length || 0} Credentials</Badge>
             </div>
+
+            {!profile.certifications || profile.certifications.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-6">No certifications recorded yet.</p>
+            ) : (
+              <div className="relative pl-6 border-l-2 border-slate-200 space-y-6 pt-2">
+                {profile.certifications.map((c, i) => {
+                  const isExpired = c.expiryDate ? new Date(c.expiryDate).getTime() < Date.now() : false;
+                  // If certificateUrl is an API route, map it to the public verification frontend route
+                  const verifyHref = c.certificateUrl
+                    ? c.certificateUrl.replace('/api/v1/certificates/verify/', '/verify/')
+                    : null;
+
+                  return (
+                    <div key={i} className="relative group">
+                      {/* Timeline Bullet */}
+                      <div className={`absolute -left-[31px] top-1.5 w-4 h-4 rounded-full border-2 border-white shadow-xs ${
+                        isExpired ? 'bg-slate-400' : 'bg-emerald-500'
+                      }`} />
+
+                      <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-blue-300/80 transition-all space-y-2">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs font-extrabold text-slate-900">{c.name}</h4>
+                              <Badge variant={isExpired ? 'muted' : 'success'}>
+                                {isExpired ? 'Expired' : 'Verified Active ✓'}
+                              </Badge>
+                            </div>
+                            <p className="text-[11px] text-slate-600 mt-0.5 font-medium">{c.issuingBody}</p>
+                          </div>
+
+                          <div className="text-right text-[11px] text-slate-400 shrink-0">
+                            <div>Issued: {new Date(c.issueDate).toLocaleDateString()}</div>
+                            {c.expiryDate && (
+                              <div>Valid Thru: {new Date(c.expiryDate).toLocaleDateString()}</div>
+                            )}
+                          </div>
+                        </div>
+
+                        {verifyHref && (
+                          <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between">
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              Verifiable Credential Ledger Entry
+                            </span>
+                            <a
+                              href={verifyHref}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>View Public Badge</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </Card>
         )}
 

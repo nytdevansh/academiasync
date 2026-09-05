@@ -14,6 +14,7 @@ import {
   Building2,
   ShieldCheck,
   Home,
+  Award,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Avatar } from '../ui/Avatar';
@@ -31,6 +32,7 @@ const ICONS: Record<string, React.ReactNode> = {
   Users: <Users className="w-4 h-4" />,
   Building2: <Building2 className="w-4 h-4" />,
   ShieldCheck: <ShieldCheck className="w-4 h-4" />,
+  Award: <Award className="w-4 h-4" />,
 };
 
 export const Sidebar: React.FC = () => {

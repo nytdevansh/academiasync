@@ -13,15 +13,19 @@ import { StudentsPage } from './pages/public/StudentsPage';
 import { DepartmentsPage } from './pages/public/DepartmentsPage';
 import { NoticesPage } from './pages/public/NoticesPage';
 import { ContactPage } from './pages/public/ContactPage';
+import { CertificateVerificationPage } from './pages/public/CertificateVerificationPage';
 import { LoginPage } from './pages/auth/LoginPage';
 
 // Shared Protected Portal Pages
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { ProfilePage } from './pages/profile/ProfilePage';
 import { EditProfilePage } from './pages/profile/EditProfilePage';
+import { MyCertificatesPage } from './pages/certificates/MyCertificatesPage';
 import { TrainingCatalogPage } from './pages/training/TrainingCatalogPage';
 import { MyEnrollmentsPage, HODApprovalsPage } from './pages/training/TrainingPages';
 import { CourseLearningPage } from './pages/training/CourseLearningPage';
+import { CourseGradingPage } from './pages/training/CourseGradingPage';
+import { SessionAttendancePage } from './pages/training/SessionAttendancePage';
 import { CompetencyPage } from './pages/competency/CompetencyPage';
 import { AppraisalListPage } from './pages/appraisal/AppraisalPages';
 import { AssessmentListPage } from './pages/assessments/AssessmentListPage';
@@ -46,6 +50,9 @@ const App: React.FC = () => (
           <Route path="/contact" element={<ContactPage />} />
         </Route>
 
+        {/* Public Cryptographic Certificate Verification */}
+        <Route path="/verify/:token" element={<CertificateVerificationPage />} />
+
         {/* Authentication */}
         <Route path="/login" element={<LoginPage />} />
 
@@ -54,10 +61,14 @@ const App: React.FC = () => (
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/edit" element={<EditProfilePage />} />
+          <Route path="/certificates" element={<MyCertificatesPage />} />
 
           <Route path="/training/catalog" element={<TrainingCatalogPage />} />
           <Route path="/training/my-enrollments" element={<MyEnrollmentsPage />} />
+          <Route path="/training/programs/:id/sessions" element={<SessionAttendancePage />} />
+          <Route path="/training/sessions/:sessionId" element={<SessionAttendancePage />} />
           <Route path="/training/:id/learn" element={<CourseLearningPage />} />
+          <Route path="/training/grading" element={<ProtectedRoute allowedRoles={['hod', 'dean', 'administrator', 'faculty_member']}><CourseGradingPage /></ProtectedRoute>} />
           <Route path="/training/approvals" element={<ProtectedRoute allowedRoles={['hod', 'dean', 'administrator']}><HODApprovalsPage /></ProtectedRoute>} />
 
           <Route path="/assessments" element={<AssessmentListPage />} />

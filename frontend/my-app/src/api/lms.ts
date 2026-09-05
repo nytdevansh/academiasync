@@ -165,3 +165,52 @@ export const gradeSubmission = async (
   const { data } = await axiosInstance.put(`/training/programs/${programId}/assessment/submissions/${subId}/grade`, payload);
   return data;
 };
+
+// ── Multi-Attempt History & Retake Management ──
+export interface CourseAttemptResult {
+  _id: string;
+  enrollmentId: string;
+  teacherId: string;
+  courseId: string;
+  attemptNumber: number;
+  score: number;
+  totalScore: number;
+  maxPossibleScore: number;
+  passingScore: number;
+  passed: boolean | null;
+  status: 'pending' | 'graded';
+  gradedBy?: string;
+  gradedAt?: string;
+  answers: {
+    questionIndex: number;
+    prompt?: string;
+    type?: string;
+    selectedOption?: number;
+    answerText?: string;
+    scoreAwarded?: number;
+    feedback?: string;
+    isCorrect?: boolean;
+  }[];
+  certificateId?: any;
+  completedAt: string;
+}
+
+export const getMyCourseResults = async (
+  programId: string
+): Promise<ApiResponse<{ results: CourseAttemptResult[]; enrollment: any }>> => {
+  const { data } = await axiosInstance.get(`/training/programs/${programId}/results/mine`);
+  return data;
+};
+
+export const resetEnrollmentForRetake = async (
+  programId: string,
+  enrollmentId: string,
+  reason: string
+): Promise<ApiResponse<any>> => {
+  const { data } = await axiosInstance.post(
+    `/training/programs/${programId}/enrollments/${enrollmentId}/reset-retake`,
+    { reason }
+  );
+  return data;
+};
+

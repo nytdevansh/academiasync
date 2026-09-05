@@ -169,6 +169,20 @@ export const TrainingCatalogPage: React.FC = () => {
                   <span>LMS</span>
                 </Button>
 
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/training/programs/${program._id}/sessions`);
+                  }}
+                  title="View Scheduled Sessions & Attendance Roster"
+                  className="flex items-center gap-1 text-slate-700"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Sessions</span>
+                </Button>
+
                 {['hod', 'dean', 'administrator'].includes(user?.role || '') && (
                   <Button
                     variant="ghost"

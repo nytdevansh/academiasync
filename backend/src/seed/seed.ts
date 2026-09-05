@@ -16,6 +16,11 @@ import AppraisalCycle from '../models/AppraisalCycle';
 import CompetencyRecord from '../models/CompetencyRecord';
 import Assessment from '../models/Assessment';
 import AssessmentResponse from '../models/AssessmentResponse';
+import CourseResult from '../models/CourseResult';
+import Certificate from '../models/Certificate';
+import CourseAssessment from '../models/CourseAssessment';
+import CourseAssessmentSubmission from '../models/CourseAssessmentSubmission';
+import { issueCertificate } from '../services/certificateService';
 
 const hash = async (pw: string) => bcrypt.hash(pw, await bcrypt.genSalt(12));
 
@@ -29,11 +34,16 @@ export const seedData = async () => {
     TrainingProgram.deleteMany({}), TrainingEnrollment.deleteMany({}),
     AppraisalCycle.deleteMany({}), CompetencyRecord.deleteMany({}),
     Assessment.deleteMany({}), AssessmentResponse.deleteMany({}),
+    CourseResult.deleteMany({}), Certificate.deleteMany({}),
+    CourseAssessment.deleteMany({}), CourseAssessmentSubmission.deleteMany({}),
   ]);
 
   // ── Departments ──────────────────────────────────────────────────────────────
-  console.log('🏛  Seeding departments...');
-  const [cse, ece, mech, civil, mba, physics, chemistry, maths, english, arts] = await Department.insertMany([
+  console.log('🏛  Seeding institutional directories & departments...');
+  const [adminDept, acadDept, hrDept, cse, ece, mech, civil, mba, physics, chemistry, maths, english, arts] = await Department.insertMany([
+    { name: 'Central Administration & Institutional Governance', code: 'ADMIN', description: 'Central Administration, Operations & System Management' },
+    { name: 'Office of Academic Affairs & Deanery', code: 'ACAD', description: 'Academic Leadership, Accreditation, Curriculum & Faculty Development' },
+    { name: 'Human Resource Development', code: 'HR', description: 'Faculty Recruitment, Appraisal, Compliance & Staff Welfare' },
     { name: 'Computer Science & Engineering', code: 'CSE', description: 'Software, AI/ML, Systems' },
     { name: 'Electronics & Communication Engineering', code: 'ECE', description: 'VLSI, Embedded Systems, Communication' },
     { name: 'Mechanical Engineering', code: 'MECH', description: 'Manufacturing, Thermal, Design' },
@@ -47,7 +57,7 @@ export const seedData = async () => {
   ]);
 
   // ── Users ────────────────────────────────────────────────────────────────────
-  console.log('👤  Seeding users...');
+  console.log('👤  Seeding users into designated department directories...');
   const adminHash = await hash('Admin@123');
   const hodHash   = await hash('Hod@123');
   const deanHash  = await hash('Dean@123');
@@ -55,11 +65,11 @@ export const seedData = async () => {
   const facHash   = await hash('Faculty@123');
 
   const [admin, hodCSE, hodECE, dean, hr, fac1, fac2, fac3, fac4] = await User.insertMany([
-    { name: 'Admin User', email: 'admin@academiasync.edu', passwordHash: adminHash, role: 'administrator', status: 'active' },
+    { name: 'Admin User', email: 'admin@academiasync.edu', passwordHash: adminHash, role: 'administrator', department: adminDept._id, status: 'active' },
     { name: 'Dr. Kavitha Ramesh', email: 'hod.cse@academiasync.edu', passwordHash: hodHash, role: 'hod', department: cse._id, status: 'active' },
     { name: 'Dr. Rajan Pillai', email: 'hod.ece@academiasync.edu', passwordHash: hodHash, role: 'hod', department: ece._id, status: 'active' },
-    { name: 'Dr. Suresh Menon', email: 'dean@academiasync.edu', passwordHash: deanHash, role: 'dean', status: 'active' },
-    { name: 'Priya Nair', email: 'hr@academiasync.edu', passwordHash: hrHash, role: 'hr', status: 'active' },
+    { name: 'Dr. Suresh Menon', email: 'dean@academiasync.edu', passwordHash: deanHash, role: 'dean', department: acadDept._id, status: 'active' },
+    { name: 'Priya Nair', email: 'hr@academiasync.edu', passwordHash: hrHash, role: 'hr', department: hrDept._id, status: 'active' },
     { name: 'Dr. Arjun Krishnan', email: 'faculty@academiasync.edu', passwordHash: facHash, role: 'faculty_member', department: cse._id, status: 'active' },
     { name: 'Ms. Divya Thomas', email: 'faculty2@academiasync.edu', passwordHash: facHash, role: 'faculty_member', department: ece._id, status: 'active' },
     { name: 'Mr. Rahul Sharma', email: 'faculty3@academiasync.edu', passwordHash: facHash, role: 'faculty_member', department: cse._id, status: 'active' },
@@ -121,6 +131,27 @@ export const seedData = async () => {
   console.log('👨‍🏫  Seeding faculty profiles...');
   await FacultyProfile.insertMany([
     {
+      userId: admin._id,
+      bio: 'Chief Administrator overseeing institutional systems, faculty governance, and security operations.',
+      qualifications: [{ degree: 'M.Tech', institution: 'IIT Delhi', year: 2010, specialization: 'Information Systems' }],
+      experience: [{ institution: 'AcademiaSync University', role: 'Chief Administrator', fromYear: 2015, isCurrent: true }],
+      profileCompleteness: 100,
+    },
+    {
+      userId: dean._id,
+      bio: 'Dean of Academic Affairs guiding university accreditation, faculty competency, and academic policy.',
+      qualifications: [{ degree: 'Ph.D', institution: 'IISc Bangalore', year: 2005, specialization: 'Computer Science' }],
+      experience: [{ institution: 'AcademiaSync University', role: 'Dean of Academic Affairs', fromYear: 2012, isCurrent: true }],
+      profileCompleteness: 100,
+    },
+    {
+      userId: hr._id,
+      bio: 'Head of Human Resources managing faculty development, appraisal workflows, and institutional compliance.',
+      qualifications: [{ degree: 'MBA HR', institution: 'XLRI Jamshedpur', year: 2014, specialization: 'Human Resource Management' }],
+      experience: [{ institution: 'AcademiaSync University', role: 'Head of HR', fromYear: 2018, isCurrent: true }],
+      profileCompleteness: 95,
+    },
+    {
       userId: fac1._id,
       bio: 'Experienced faculty in AI and Machine Learning with 8+ years of teaching and research experience.',
       qualifications: [{ degree: 'Ph.D', institution: 'IIT Madras', year: 2015, specialization: 'Artificial Intelligence' }, { degree: 'M.Tech', institution: 'NIT Trichy', year: 2010, specialization: 'Computer Science' }],
@@ -141,28 +172,180 @@ export const seedData = async () => {
       profileCompleteness: 75,
     },
     { userId: hodCSE._id, qualifications: [{ degree: 'Ph.D', institution: 'IIT Bombay', year: 2008, specialization: 'Systems Engineering' }], experience: [{ institution: 'AcademiaSync University', role: 'Professor & HOD', fromYear: 2008, isCurrent: true }], profileCompleteness: 85 },
+    { userId: hodECE._id, qualifications: [{ degree: 'Ph.D', institution: 'IIT Madras', year: 2009, specialization: 'Telecommunications' }], experience: [{ institution: 'AcademiaSync University', role: 'Professor & HOD', fromYear: 2009, isCurrent: true }], profileCompleteness: 85 },
     { userId: fac3._id, qualifications: [{ degree: 'M.Tech', institution: 'Anna University', year: 2018, specialization: 'Web Technologies' }], experience: [{ institution: 'AcademiaSync University', role: 'Assistant Professor', fromYear: 2019, isCurrent: true }], profileCompleteness: 50 },
     { userId: fac4._id, qualifications: [{ degree: 'Ph.D', institution: 'NIT Calicut', year: 2016, specialization: 'Thermal Engineering' }], experience: [{ institution: 'AcademiaSync University', role: 'Associate Professor', fromYear: 2016, isCurrent: true }], profileCompleteness: 80 },
   ]);
 
   // ── Training Programs ────────────────────────────────────────────────────────
-  console.log('🎓  Seeding training programs...');
+  console.log('🎓  Seeding training programs & course assessments...');
   const [tp1, tp2, tp3, tp4] = await TrainingProgram.insertMany([
-    { title: 'Faculty Development Program on AI & ML', type: 'FDP', description: 'Comprehensive FDP on latest AI/ML techniques for faculty members across all departments.', organizer: 'AICTE & IIT Madras', venue: 'Online', mode: 'online', startDate: new Date('2026-09-01'), endDate: new Date('2026-09-05'), capacity: 50, registrationDeadline: new Date('2026-08-25'), targetDepartments: [], createdBy: admin._id, tags: ['AI', 'ML', 'Deep Learning'] },
-    { title: 'Research Methodology & Academic Writing Workshop', type: 'Workshop', description: 'Hands-on workshop on research design, data analysis, and writing high-impact papers.', organizer: 'AcademiaSync R&D Cell', venue: 'Seminar Hall A', mode: 'offline', startDate: new Date('2026-09-15'), endDate: new Date('2026-09-16'), capacity: 30, registrationDeadline: new Date('2026-09-10'), targetDepartments: [], createdBy: admin._id, tags: ['Research', 'Writing', 'Publication'] },
-    { title: 'NPTEL Online Certification: Data Science', type: 'MOOC', description: 'Self-paced NPTEL course on Data Science fundamentals.', organizer: 'NPTEL-IIT Kharagpur', mode: 'online', startDate: new Date('2026-10-01'), endDate: new Date('2026-11-30'), capacity: 100, createdBy: admin._id, tags: ['Data Science', 'Python', 'NPTEL'] },
-    { title: 'National Conference on Emerging Technologies', type: 'Conference', description: 'Annual national conference featuring keynotes and paper presentations.', organizer: 'AcademiaSync University', venue: 'Convention Centre', mode: 'hybrid', startDate: new Date('2026-11-10'), endDate: new Date('2026-11-12'), capacity: 200, createdBy: admin._id, tags: ['Conference', 'Research', 'Networking'] },
+    {
+      title: 'Faculty Development Program on AI & ML',
+      type: 'FDP',
+      description: 'Comprehensive FDP on latest AI/ML techniques for faculty members across all departments.',
+      organizer: 'AICTE & IIT Madras',
+      venue: 'Online',
+      mode: 'online',
+      startDate: new Date('2026-09-01'),
+      endDate: new Date('2026-09-05'),
+      capacity: 50,
+      registrationDeadline: new Date('2026-08-25'),
+      targetDepartments: [cse._id, ece._id],
+      createdBy: admin._id,
+      tags: ['AI', 'ML', 'Deep Learning'],
+      skillAreaIds: [resSkill._id, ictSkill._id],
+      passingScore: 60,
+      maxAttempts: 3,
+      cooldownHours: 24,
+      requiresAssessmentToCertify: true,
+      certificationValidityYears: 2,
+    },
+    {
+      title: 'Research Methodology & Academic Writing Workshop',
+      type: 'Workshop',
+      description: 'Hands-on workshop on research design, data analysis, and writing high-impact papers.',
+      organizer: 'AcademiaSync R&D Cell',
+      venue: 'Seminar Hall A',
+      mode: 'offline',
+      startDate: new Date('2026-09-15'),
+      endDate: new Date('2026-09-16'),
+      capacity: 30,
+      registrationDeadline: new Date('2026-09-10'),
+      targetDepartments: [],
+      createdBy: admin._id,
+      tags: ['Research', 'Writing', 'Publication'],
+      skillAreaIds: [resSkill._id],
+      passingScore: 60,
+    },
+    {
+      title: 'NPTEL Online Certification: Data Science',
+      type: 'MOOC',
+      description: 'Self-paced NPTEL course on Data Science fundamentals.',
+      organizer: 'NPTEL-IIT Kharagpur',
+      mode: 'online',
+      startDate: new Date('2026-10-01'),
+      endDate: new Date('2026-11-30'),
+      capacity: 100,
+      createdBy: admin._id,
+      tags: ['Data Science', 'Python', 'NPTEL'],
+      skillAreaIds: [ictSkill._id],
+    },
+    {
+      title: 'National Conference on Emerging Technologies',
+      type: 'Conference',
+      description: 'Annual national conference featuring keynotes and paper presentations.',
+      organizer: 'AcademiaSync University',
+      venue: 'Convention Centre',
+      mode: 'hybrid',
+      startDate: new Date('2026-11-10'),
+      endDate: new Date('2026-11-12'),
+      capacity: 200,
+      createdBy: admin._id,
+      tags: ['Conference', 'Research', 'Networking'],
+      skillAreaIds: [indSkill._id],
+    },
   ]);
 
+  // ── Course Assessment Linked to tp1 ──────────────────────────────────────────
+  const courseAssessment = await CourseAssessment.create({
+    programId: tp1._id,
+    title: 'AI & ML Competency & Pedagogy Assessment',
+    instructions: 'Complete all 3 questions to achieve verified institutional certification.',
+    passingScore: 60,
+    timeLimitMinutes: 30,
+    createdBy: admin._id,
+    isActive: true,
+    questions: [
+      {
+        prompt: 'Which loss function is most commonly used in multi-class classification problems?',
+        type: 'mcq',
+        options: ['Mean Squared Error', 'Categorical Cross-Entropy', 'Hinge Loss', 'L1 Loss'],
+        correctAnswer: 1,
+        maxScore: 10,
+      },
+      {
+        prompt: 'What is the primary role of dropout layers in deep neural network architectures?',
+        type: 'mcq',
+        options: ['Speeding up matrix multiplications', 'Preventing model overfitting', 'Increasing layer dimensions', 'Normalizing activations'],
+        correctAnswer: 1,
+        maxScore: 10,
+      },
+      {
+        prompt: 'In supervised learning, what does the validation set primarily serve to evaluate?',
+        type: 'mcq',
+        options: ['Weight initialization gradients', 'Hyperparameter tuning and generalization error', 'Raw feature extraction performance', 'Batch normalization moving variance'],
+        correctAnswer: 1,
+        maxScore: 10,
+      },
+    ],
+  });
+
+  await TrainingProgram.findByIdAndUpdate(tp1._id, { assessmentId: courseAssessment._id });
+
   // ── Training Enrollments ─────────────────────────────────────────────────────
-  console.log('📝  Seeding enrollments...');
-  await TrainingEnrollment.insertMany([
-    { userId: fac1._id, programId: tp1._id, status: 'approved', nominatedBy: fac1._id, approvedBy: hodCSE._id, nominationDate: new Date('2026-08-10'), approvalDate: new Date('2026-08-12') },
-    { userId: fac1._id, programId: tp2._id, status: 'completed', nominatedBy: fac1._id, approvedBy: hodCSE._id, nominationDate: new Date('2026-07-01'), completionDate: new Date('2026-07-20'), feedback: { rating: 5, comments: 'Excellent workshop!', learningOutcome: 'Learned advanced statistical methods for research.' }, certificateUrl: 'https://example.com/cert/fac1-workshop' },
+  console.log('📝  Seeding enrollments & certificates...');
+  const [enr1, enr2, enr3, enr4, enr5] = await TrainingEnrollment.insertMany([
+    {
+      userId: fac1._id,
+      programId: tp1._id,
+      status: 'certified',
+      nominatedBy: fac1._id,
+      approvedBy: hodCSE._id,
+      nominationDate: new Date('2026-08-10'),
+      approvalDate: new Date('2026-08-12'),
+      completionDate: new Date('2026-09-04'),
+      attemptsCount: 1,
+      lastPassedAttemptAt: new Date('2026-09-04'),
+    },
+    {
+      userId: fac1._id,
+      programId: tp2._id,
+      status: 'completed',
+      nominatedBy: fac1._id,
+      approvedBy: hodCSE._id,
+      nominationDate: new Date('2026-07-01'),
+      completionDate: new Date('2026-07-20'),
+      feedback: { rating: 5, comments: 'Excellent workshop!', learningOutcome: 'Learned advanced statistical methods for research.' },
+      certificateUrl: 'https://example.com/cert/fac1-workshop',
+    },
     { userId: fac2._id, programId: tp1._id, status: 'nominated', nominatedBy: fac2._id, nominationDate: new Date('2026-08-15') },
     { userId: fac3._id, programId: tp3._id, status: 'approved', nominatedBy: fac3._id, approvedBy: hodCSE._id, nominationDate: new Date('2026-09-05') },
     { userId: fac4._id, programId: tp4._id, status: 'nominated', nominatedBy: fac4._id, nominationDate: new Date('2026-08-20') },
   ]);
+
+  // Create CourseResult and Certificate for fac1 on tp1
+  const seededResult = await CourseResult.create({
+    enrollmentId: enr1._id,
+    teacherId: fac1._id,
+    courseId: tp1._id,
+    assessmentId: courseAssessment._id,
+    attemptNumber: 1,
+    score: 100,
+    totalScore: 30,
+    maxPossibleScore: 30,
+    passingScore: 60,
+    passed: true,
+    status: 'graded',
+    answers: [
+      { questionIndex: 0, prompt: 'Which loss function is most commonly used in multi-class classification problems?', type: 'mcq', selectedOption: 1, score: 10, maxScore: 10, feedback: 'Correct', isCorrect: true },
+      { questionIndex: 1, prompt: 'What is the primary role of dropout layers in deep neural network architectures?', type: 'mcq', selectedOption: 1, score: 10, maxScore: 10, feedback: 'Correct', isCorrect: true },
+      { questionIndex: 2, prompt: 'In supervised learning, what does the validation set primarily serve to evaluate?', type: 'mcq', selectedOption: 1, score: 10, maxScore: 10, feedback: 'Correct', isCorrect: true },
+    ],
+    completedAt: new Date('2026-09-04'),
+  });
+
+  const seededCert = await issueCertificate({
+    teacher: fac1,
+    course: tp1,
+    enrollmentId: enr1._id,
+    resultId: seededResult._id,
+    departmentName: 'Computer Science & Engineering',
+    departmentCode: 'CSE',
+  });
+
+  await TrainingEnrollment.findByIdAndUpdate(enr1._id, { certificateId: seededCert._id });
+  await CourseResult.findByIdAndUpdate(seededResult._id, { certificateId: seededCert._id });
 
   // ── Appraisal Cycle ──────────────────────────────────────────────────────────
   console.log('📊  Seeding appraisal cycle...');

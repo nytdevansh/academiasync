@@ -16,6 +16,13 @@ interface RateLimiterOptions {
  * Creates an in-memory sliding window rate limiter middleware.
  * Zero external dependencies, fully compatible with Express 5,
  * and sets RFC-compliant RateLimit & Retry-After response headers.
+ *
+ * PRODUCTION NOTE:
+ * This store is in-memory and scoped to a single Node.js process.
+ * Acceptable for single-instance deployments (e.g. single Render web service).
+ * If scaling to multiple load-balanced instances, replace the in-memory Map
+ * with a shared distributed store (e.g. Redis / `rate-limit-redis`) to prevent
+ * effective rate limit multiplication (limit × instance_count).
  */
 export const createRateLimiter = (options: RateLimiterOptions) => {
   const {
@@ -23,11 +30,11 @@ export const createRateLimiter = (options: RateLimiterOptions) => {
     max,
     message = 'Too many requests, please try again later.',
     keyGenerator = (req: Request) => {
-      const forwarded = req.headers['x-forwarded-for'];
+      const forwarded = req.headers?.['x-forwarded-for'];
       if (typeof forwarded === 'string') {
         return forwarded.split(',')[0].trim();
       }
-      return req.ip || req.socket.remoteAddress || 'unknown-client';
+      return req.ip || req.socket?.remoteAddress || 'unknown-client';
     },
   } = options;
 

@@ -15,6 +15,14 @@ export interface ITrainingProgram extends Document {
   createdBy: mongoose.Types.ObjectId;
   isActive: boolean;
   tags: string[];
+  skillAreaIds: mongoose.Types.ObjectId[];
+  assessmentId?: mongoose.Types.ObjectId;
+  passingScore: number;
+  maxAttempts: number;
+  cooldownHours: number;
+  requiresAssessmentToCertify: boolean;
+  certificationValidityYears: number;
+  hasScheduledSessions: boolean;
   // Aggregate effectiveness — updated on each enrollment completion
   effectiveness: {
     avgImprovementDelta: number; // avg (scoreAfter - scoreBefore) across recommendations
@@ -41,6 +49,14 @@ const trainingProgramSchema = new Schema<ITrainingProgram>(
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     isActive: { type: Boolean, default: true },
     tags: [String],
+    skillAreaIds: [{ type: Schema.Types.ObjectId, ref: 'SkillArea' }],
+    assessmentId: { type: Schema.Types.ObjectId, ref: 'CourseAssessment' },
+    passingScore: { type: Number, default: 60, min: 0, max: 100 },
+    maxAttempts: { type: Number, default: 3, min: 1 },
+    cooldownHours: { type: Number, default: 24, min: 0 },
+    requiresAssessmentToCertify: { type: Boolean, default: true },
+    certificationValidityYears: { type: Number, default: 2, min: 1 },
+    hasScheduledSessions: { type: Boolean, default: false },
     effectiveness: {
       avgImprovementDelta: { type: Number, default: 0 },
       avgFacultyRating:    { type: Number, default: 0 },

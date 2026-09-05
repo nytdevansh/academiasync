@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Certificate Expiration Reminder</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #1e293b;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+          <!-- Header Banner -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%); padding: 36px 32px; text-align: center; color: #ffffff;">
+              <div style="font-size: 36px; margin-bottom: 8px;">⏳</div>
+              <h1 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">Credential Renewal Reminder</h1>
+              <p style="margin: 6px 0 0 0; font-size: 13px; color: #fde68a;">Certificate Expiring in {{daysRemaining}} Days</p>
+            </td>
+          </tr>
+          <!-- Body Content -->
+          <tr>
+            <td style="padding: 32px;">
+              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 24px; color: #334155;">
+                Dear <strong>{{recipientName}}</strong>,
+              </p>
+              <p style="margin: 0 0 20px 0; font-size: 14px; line-height: 22px; color: #475569;">
+                This is an automated reminder that your faculty certification is approaching its designated validity threshold:
+              </p>
+              <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 18px; margin-bottom: 24px;">
+                <div style="font-size: 16px; font-weight: 700; color: #92400e; margin-bottom: 6px;">{{courseTitle}}</div>
+                <div style="font-size: 12px; color: #b45309; line-height: 18px;">
+                  Certificate Number: <strong>{{certificateNumber}}</strong><br>
+                  Designated Expiration Date: <strong>{{expiryDate}}</strong> ({{daysRemaining}} days remaining)
+                </div>
+              </div>
+              <p style="margin: 0 0 24px 0; font-size: 13px; line-height: 20px; color: #64748b;">
+                To maintain active compliance in your institutional profile and accreditation metrics, please enroll in an upcoming refresher FDP or re-certification cycle before expiration.
+              </p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="{{renewalUrl}}" style="background-color: #d97706; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-size: 13px; font-weight: 700; display: inline-block;">
+                  View Training Catalog &amp; Renew →
+                </a>
+              </div>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; text-align: center;">
+              AcademiaSync Institutional Portal • Compliance Automation • &copy; {{year}}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -27,8 +27,9 @@ import reportRoutes from './routes/reportRoutes';
 import auditRoutes from './routes/auditRoutes';
 import recommendationRoutes from './routes/recommendationRoutes';
 import assessmentRoutes from './routes/assessmentRoutes';
+import certificateRoutes from './routes/certificateRoutes';
 import { startComplianceJobs } from './jobs/complianceAlerts';
-
+import { startCertificateExpiryScheduler } from './jobs/certificateExpiryReminder.job';
 
 const app = express();
 
@@ -113,6 +114,7 @@ app.use(`${API}/reports`, reportRoutes);
 app.use(`${API}/audit`, auditRoutes);
 app.use(`${API}/recommendations`, recommendationRoutes);
 app.use(`${API}/assessments`, assessmentRoutes);
+app.use(`${API}/certificates`, certificateRoutes);
 
 // 404 handler
 app.use((_req, res) => res.status(404).json({ success: false, error: 'Route not found' }));
@@ -130,6 +132,7 @@ connectDB().then(() => {
   });
   // Start background compliance jobs after DB is ready
   startComplianceJobs();
+  startCertificateExpiryScheduler();
 }).catch((err) => {
   console.error('Failed to connect to database:', err);
   process.exit(1);

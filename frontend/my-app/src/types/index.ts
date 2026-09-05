@@ -1,7 +1,7 @@
 // ── Shared TypeScript types for AcademiaSync FES ──────────────────────────────
 
 export type UserRole = 'faculty_member' | 'hod' | 'dean' | 'hr' | 'administrator';
-export type TrainingStatus = 'nominated' | 'approved' | 'rejected' | 'attended' | 'completed' | 'withdrawn';
+export type TrainingStatus = 'nominated' | 'approved' | 'rejected' | 'attended' | 'completed' | 'certified' | 'withdrawn';
 export type AppraisalStatus = 'draft' | 'self_submitted' | 'under_review' | 'completed';
 export type CompetencyLevel = 'beginner' | 'developing' | 'proficient' | 'advanced' | 'expert';
 export type TrainingType = 'FDP' | 'Workshop' | 'Seminar' | 'Conference' | 'MOOC' | 'Other';
@@ -99,6 +99,37 @@ export interface TrainingProgram {
   createdBy: User;
   isActive: boolean;
   tags: string[];
+  hasScheduledSessions?: boolean;
+}
+
+export interface ISessionAttendee {
+  _id?: string;
+  userId: User;
+  enrollmentId?: string;
+  present: boolean;
+  markedAt?: string;
+  notes?: string;
+}
+
+export interface TrainingSession {
+  _id: string;
+  programId: TrainingProgram | string;
+  title: string;
+  description?: string;
+  scheduledDate: string;
+  startTime?: string;
+  endTime?: string;
+  venueOrLink?: string;
+  organiserId?: User | null;
+  organiserAssignedAt?: string | null;
+  attendanceMarkedAt?: string | null;
+  attendanceMarkedBy?: User | null;
+  status: 'scheduled' | 'organiser_assigned' | 'attendance_marked' | 'cancelled';
+  attendees: ISessionAttendee[];
+  totalAttendees?: number;
+  presentCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TrainingEnrollment {

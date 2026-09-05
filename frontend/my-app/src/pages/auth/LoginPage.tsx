@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, GraduationCap, BarChart2, Shield, Users, ArrowRight, Sparkles, CheckCircle2, ChevronDown, ChevronUp, UserCheck, LogOut, KeyRound } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, GraduationCap, BarChart2, Shield, Users, ArrowRight, Sparkles, CheckCircle2, ChevronDown, ChevronUp, UserCheck, LogOut, KeyRound, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import * as api from '../../api/auth';
 import { Button } from '../../components/ui/Button';
@@ -149,6 +149,14 @@ export const LoginPage: React.FC = () => {
         {/* Right Login Card */}
         <div className="lg:col-span-6">
           <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-8 sm:p-10 space-y-6">
+
+            {/* Session Expired / Security Reason Banner */}
+            {new URLSearchParams(location.search).get('reason') === 'session_expired' && (
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-xs flex items-center gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Your session has ended for security reasons. Please sign in again to continue your work.</span>
+              </div>
+            )}
             
             {/* Active Session Card if already authenticated */}
             {isAuthenticated && user && (

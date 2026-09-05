@@ -2,14 +2,24 @@ import express from 'express';
 import {
   getPrograms, getProgramById, createProgram, updateProgram, deleteProgram,
   enrollInProgram, getMyEnrollments, getPendingApprovals, getEnrollmentsByDepartment,
-  approveEnrollment, rejectEnrollment, markAttended, completeEnrollment
+  approveEnrollment, rejectEnrollment, markAttended, completeEnrollment,
+  resetEnrollmentForRetake
 } from '../controllers/trainingController';
 import {
   getCourseContent, upsertCourseContent, toggleModuleProgress,
   getProgramAttendance, markSessionAttendance, getMyAttendance,
   getCourseAssessment, upsertCourseAssessment, submitCourseAssessment,
-  getMySubmission, getProgramSubmissions, gradeSubmission
+  getMySubmission, getProgramSubmissions, gradeSubmission,
+  getMyCourseResults
 } from '../controllers/lmsController';
+import {
+  getProgramSessions,
+  getSessionById,
+  createSession,
+  assignOrganiser,
+  unassignOrganiser,
+  markSessionAttendance as markTrainingSessionAttendance,
+} from '../controllers/sessionController';
 import { protect } from '../middlewares/auth';
 import { authorize } from '../middlewares/rbac';
 
@@ -50,5 +60,15 @@ router.post('/programs/:id/assessment/submit', authorize('faculty_member', 'hod'
 router.get('/programs/:id/assessment/mine', getMySubmission);
 router.get('/programs/:id/assessment/submissions', authorize('hod', 'dean', 'administrator'), getProgramSubmissions);
 router.put('/programs/:id/assessment/submissions/:subId/grade', authorize('hod', 'dean', 'administrator'), gradeSubmission);
+router.get('/programs/:id/results/mine', getMyCourseResults);
+router.post('/programs/:id/enrollments/:enrollmentId/reset-retake', authorize('hod', 'dean', 'administrator'), resetEnrollmentForRetake);
+
+// Scheduled Sessions & Organiser Attendance
+router.get('/programs/:id/sessions', getProgramSessions);
+router.post('/programs/:id/sessions', authorize('administrator', 'hod', 'dean'), createSession);
+router.get('/sessions/:sessionId', getSessionById);
+router.post('/sessions/:sessionId/assign-organiser', assignOrganiser);
+router.post('/sessions/:sessionId/unassign-organiser', unassignOrganiser);
+router.put('/sessions/:sessionId/attendance', markTrainingSessionAttendance);
 
 export default router;

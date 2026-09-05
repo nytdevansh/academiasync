@@ -4,12 +4,19 @@ import ModuleProgress from '../models/ModuleProgress';
 import AttendanceRecord from '../models/AttendanceRecord';
 import CourseAssessment from '../models/CourseAssessment';
 import CourseAssessmentSubmission from '../models/CourseAssessmentSubmission';
+import CourseResult from '../models/CourseResult';
+import Certificate from '../models/Certificate';
+import CompetencyRecord from '../models/CompetencyRecord';
+import FacultyProfile from '../models/FacultyProfile';
+import User from '../models/User';
 import TrainingEnrollment from '../models/TrainingEnrollment';
 import TrainingRecommendation from '../models/TrainingRecommendation';
 import TrainingProgram from '../models/TrainingProgram';
 import Notification from '../models/Notification';
 import { AuthRequest } from '../middlewares/auth';
 import { logAudit } from '../services/auditService';
+import { issueCertificate } from '../services/certificateService';
+import { notify } from '../services/notificationService';
 
 // ─── Course Content & Learning Delivery ───────────────────────────────────────
 
@@ -293,12 +300,11 @@ export const upsertCourseAssessment = async (req: AuthRequest, res: Response): P
     res.status(500).json({ success: false, error: err.message });
   }
 };
-
 // POST /api/v1/training/programs/:id/assessment/submit — Faculty takes test
 export const submitCourseAssessment = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { id: programId } = req.params;
-    const { answers } = req.body; // answers: [{ questionIndex, selectedOption, answerText, fileUrl }]
+    const programId = (Array.isArray(req.params.id) ? req.params.id[0] : req.params.id) as string;
+    const { answers, timeSpentSeconds } = req.body; // answers: [{ questionIndex, selectedOption, answerText, fileUrl }]
     const userId = req.user?._id;
 
     const assessment = await CourseAssessment.findOne({ programId, isActive: true });
@@ -307,61 +313,165 @@ export const submitCourseAssessment = async (req: AuthRequest, res: Response): P
       return;
     }
 
-    const enrollment = await TrainingEnrollment.findOne({ userId, programId });
-    if (!enrollment) {
-      res.status(403).json({ success: false, error: 'You are not enrolled in this program' });
+    const program = await TrainingProgram.findById(programId);
+    const maxAttempts = program?.maxAttempts || 3;
+    const cooldownHours = program?.cooldownHours ?? 24;
+    const cooldownMs = cooldownHours * 3600000;
+    const cutoff = new Date(Date.now() - cooldownMs);
+
+    const currentEnrollment = await TrainingEnrollment.findOne({ userId, programId });
+    if (!currentEnrollment) {
+      res.status(403).json({ success: false, error: 'You are not enrolled in this course' });
       return;
     }
 
-    // Auto-grade MCQs and calculate total score
+    if (currentEnrollment.status === 'certified') {
+      res.status(400).json({ success: false, error: 'You are already certified in this course' });
+      return;
+    }
+
+    if (!['attended', 'completed'].includes(currentEnrollment.status)) {
+      res.status(403).json({
+        success: false,
+        error: 'Complete the training session before attempting the assessment.',
+      });
+      return;
+    }
+
+    // ── Atomic attempt reservation (incorporates session attendance gate, maxAttempts, and failed-cooldown) ──
+    const reservedEnrollment = await TrainingEnrollment.findOneAndUpdate(
+      {
+        _id: currentEnrollment._id,
+        status: { $in: ['attended', 'completed'] },
+        attemptsCount: { $lt: maxAttempts },
+        $or: [
+          { lastFailedAttemptAt: { $exists: false } },
+          { lastFailedAttemptAt: null },
+          { lastFailedAttemptAt: { $lte: cutoff } },
+        ],
+      },
+      { $inc: { attemptsCount: 1 } },
+      { new: true }
+    );
+
+    if (!reservedEnrollment) {
+      // Diagnostic read for informative user messaging
+      const refreshed = await TrainingEnrollment.findById(currentEnrollment._id);
+      if (refreshed?.status === 'certified') {
+        res.status(400).json({ success: false, error: 'You are already certified in this course' });
+        return;
+      }
+      if (!['attended', 'completed'].includes(refreshed?.status || '')) {
+        res.status(403).json({
+          success: false,
+          error: 'Complete the training session before attempting the assessment.',
+        });
+        return;
+      }
+      if (refreshed && refreshed.attemptsCount >= maxAttempts) {
+        res.status(400).json({
+          success: false,
+          error: `Maximum attempts (${maxAttempts}) reached for this course assessment. Contact HOD/Admin for a retake reset.`,
+        });
+        return;
+      }
+      if (refreshed?.lastFailedAttemptAt && Date.now() - refreshed.lastFailedAttemptAt.getTime() < cooldownMs) {
+        const hoursLeft = Math.ceil((cooldownMs - (Date.now() - refreshed.lastFailedAttemptAt.getTime())) / 3600000);
+        res.status(429).json({
+          success: false,
+          error: `Cooldown period active after a failed attempt. You can retake this assessment in ${hoursLeft} hour(s).`,
+        });
+        return;
+      }
+      res.status(400).json({ success: false, error: 'Unable to start assessment attempt at this time.' });
+      return;
+    }
+
+    const attemptNumber = reservedEnrollment.attemptsCount;
+
+    // Auto-grade MCQs and format answers (capping free text to 2000 chars)
     let totalScore = 0;
     let maxPossibleScore = 0;
     const gradedAnswers: any[] = [];
     let hasSubjective = false;
 
     assessment.questions.forEach((q, idx) => {
-      maxPossibleScore += q.maxScore || 10;
+      const qMax = q.maxScore || 10;
+      maxPossibleScore += qMax;
       const userAns = answers?.find((a: any) => a.questionIndex === idx);
 
       if (q.type === 'mcq') {
         const isCorrect = userAns && userAns.selectedOption === q.correctAnswer;
-        const score = isCorrect ? (q.maxScore || 10) : 0;
+        const score = isCorrect ? qMax : 0;
         totalScore += score;
         gradedAnswers.push({
           questionIndex: idx,
+          prompt: q.prompt,
+          type: 'mcq',
           selectedOption: userAns?.selectedOption,
           score,
+          maxScore: qMax,
           feedback: isCorrect ? 'Correct' : 'Incorrect',
+          isCorrect,
         });
       } else {
         hasSubjective = true;
+        const answerTextCapped = userAns?.answerText ? String(userAns.answerText).slice(0, 2000) : '';
         gradedAnswers.push({
           questionIndex: idx,
-          answerText: userAns?.answerText,
+          prompt: q.prompt,
+          type: q.type,
+          answerText: answerTextCapped,
           fileUrl: userAns?.fileUrl,
           score: 0,
+          maxScore: qMax,
           feedback: 'Pending instructor evaluation',
+          isCorrect: undefined,
         });
       }
     });
 
     const percentageScore = maxPossibleScore > 0 ? Math.round((totalScore / maxPossibleScore) * 100) : 0;
-    const passed = percentageScore >= assessment.passingScore;
-    const status = hasSubjective ? 'submitted' : 'graded';
+    const passingThreshold = assessment.passingScore ?? program?.passingScore ?? 60;
 
+    // If subjective questions exist, passed is null (pending). Otherwise determine pass/fail immediately.
+    const passed = hasSubjective ? null : percentageScore >= passingThreshold;
+    const status = hasSubjective ? 'pending' : 'graded';
+
+    // ── First-Class CourseResult Record ──
+    const courseResult = await CourseResult.create({
+      enrollmentId: reservedEnrollment._id,
+      teacherId: userId,
+      courseId: programId,
+      assessmentId: assessment._id,
+      attemptNumber,
+      score: percentageScore,
+      totalScore,
+      maxPossibleScore,
+      passingScore: passingThreshold,
+      passed,
+      status,
+      gradedBy: hasSubjective ? undefined : 'system',
+      gradedAt: hasSubjective ? undefined : new Date(),
+      answers: gradedAnswers,
+      timeSpentSeconds,
+      completedAt: new Date(),
+    });
+
+    // Update legacy CourseAssessmentSubmission for existing grader dashboards
     const submission = await CourseAssessmentSubmission.findOneAndUpdate(
-      { enrollmentId: enrollment._id },
+      { enrollmentId: reservedEnrollment._id },
       {
         assessmentId: assessment._id,
         programId,
-        enrollmentId: enrollment._id,
+        enrollmentId: reservedEnrollment._id,
         userId,
         answers: gradedAnswers,
         totalScore,
         maxPossibleScore,
         percentageScore,
-        passed,
-        status,
+        passed: passed === true,
+        status: hasSubjective ? 'submitted' : 'graded',
         gradedBy: hasSubjective ? undefined : 'system',
         submittedAt: new Date(),
         gradedAt: hasSubjective ? undefined : new Date(),
@@ -369,103 +479,170 @@ export const submitCourseAssessment = async (req: AuthRequest, res: Response): P
       { new: true, upsert: true }
     );
 
-    // ─── Closed-Loop Automation ───────────────────────────────────────────────
-    if (passed) {
-      // 1. Auto-complete enrollment
-      enrollment.status = 'completed';
-      enrollment.completionDate = new Date();
-      await enrollment.save();
+    // ── Synchronous Closed-Loop Certification (100% MCQ / Auto-Graded) ──
+    if (passed === true) {
+      reservedEnrollment.status = 'certified';
+      reservedEnrollment.completionDate = new Date();
+      reservedEnrollment.lastPassedAttemptAt = new Date();
+      reservedEnrollment.lastFailedAttemptAt = undefined;
 
-      // 2. Pre-fill & link TrainingRecommendation competency score
-      const rec = await TrainingRecommendation.findOne({
-        $or: [
-          { enrollmentId: enrollment._id },
-          { facultyId: userId, programId, status: { $in: ['pending', 'enrolled', 'overdue'] } },
-        ],
+      // Check for previously revoked certificate for audit supersedes linkage
+      const prevCert = await Certificate.findOne({
+        enrollmentId: reservedEnrollment._id,
+        status: 'revoked',
+      }).sort({ createdAt: -1 });
+
+      const teacherUser = await User.findById(userId).populate('department');
+      const dept = teacherUser?.department as any;
+      const teacher = (teacherUser || req.user) as any;
+
+      const cert = await issueCertificate({
+        teacher,
+        course: program || ({ _id: programId, title: assessment.title } as any),
+        enrollmentId: reservedEnrollment._id,
+        resultId: courseResult._id,
+        departmentName: dept?.name || 'General',
+        departmentCode: dept?.code || 'GEN',
+        supersedesId: prevCert?._id,
       });
 
-      if (rec) {
-        const delta = rec.scoreBeforeRecommendation != null
-          ? percentageScore - rec.scoreBeforeRecommendation
-          : undefined;
+      courseResult.certificateId = cert._id as any;
+      await courseResult.save();
 
-        rec.status = 'completed';
-        rec.scoreAfterCompletion = percentageScore;
-        rec.improvementDelta = delta;
-        rec.enrollmentId = enrollment._id as any;
-        await rec.save();
+      reservedEnrollment.certificateId = cert._id as any;
+      await reservedEnrollment.save();
 
-        // Notify HOD of completed assessment with actual course score
-        await Notification.create({
-          userId: rec.recommendedBy,
-          type: 'training',
-          title: 'Course Passed — Evidence Score Recorded',
-          message: `${req.user?.name} passed the assessment for "${assessment.title}" with score ${percentageScore}%. Competency delta calculated: ${delta != null && delta >= 0 ? '+' : ''}${delta ?? 0} points.`,
-          relatedEntityType: 'TrainingRecommendation',
-          relatedEntityId: rec._id,
-        });
+      // Evidentiary Competency Gap Record
+      if (program?.skillAreaIds && program.skillAreaIds.length > 0) {
+        await CompetencyRecord.updateMany(
+          { userId, skillArea: { $in: program.skillAreaIds } },
+          {
+            $push: {
+              assessments: {
+                source: 'training_course',
+                score: percentageScore,
+                date: new Date(),
+                notes: `Certified in course: ${program.title} (Score: ${percentageScore}%)`,
+              },
+            },
+          }
+        );
       }
 
-      // 3. Update Program Effectiveness
-      const allCompletedRecs = await TrainingRecommendation.find({
-        programId,
-        status: 'completed',
-        improvementDelta: { $ne: null },
-      });
-      const totalEnrolled = await TrainingEnrollment.countDocuments({ programId });
-      const completions = allCompletedRecs.length;
-      const avgDelta = completions > 0
-        ? allCompletedRecs.reduce((s, r) => s + (r.improvementDelta || 0), 0) / completions
-        : 0;
-      const completionRate = totalEnrolled > 0 ? Math.round((completions / totalEnrolled) * 100) : 100;
+      // Faculty Profile certification history
+      await FacultyProfile.findOneAndUpdate(
+        { userId },
+        {
+          $push: {
+            certifications: {
+              name: program?.title || assessment.title,
+              issuingBody: program?.organizer || 'AcademiaSync Academy',
+              issueDate: cert.issuedDate,
+              expiryDate: cert.expiryDate,
+              certificateUrl: `/api/v1/certificates/verify/${cert.verificationToken}`,
+            },
+          },
+        }
+      );
 
-      await TrainingProgram.findByIdAndUpdate(programId, {
-        'effectiveness.avgImprovementDelta': Math.round(avgDelta * 10) / 10,
-        'effectiveness.totalCompletions': completions,
-        'effectiveness.completionRate': completionRate,
-        'effectiveness.lastUpdated': new Date(),
-      });
+      // Workflow recommendation status
+      await TrainingRecommendation.updateMany(
+        { facultyId: userId, programId },
+        { status: 'completed', enrollmentId: reservedEnrollment._id }
+      );
 
-      // 4. Notify Faculty
-      await Notification.create({
-        userId,
+      // Notifications (Dual-channel: In-app + Email)
+      await notify({
+        userId: userId!,
         type: 'training',
-        title: '🎉 Congratulations! Course Assessment Passed',
-        message: `You scored ${percentageScore}% on the assessment for "${assessment.title}". Your training has been certified as Completed!`,
-        relatedEntityType: 'TrainingEnrollment',
-        relatedEntityId: enrollment._id,
+        title: '🎉 Congratulations! Course Assessment Passed & Certified',
+        message: `You scored ${percentageScore}% on the assessment for "${assessment.title}". Your official Certificate ${cert.certificateNumber} has been issued!`,
+        channels: ['in_app', 'email'],
+        emailData: {
+          template: 'certificationPassed',
+          subject: `🎓 Official Certification Earned: ${program?.title || assessment.title}`,
+          variables: {
+            courseTitle: program?.title || assessment.title,
+            score: percentageScore,
+            passingScore: assessment.passingScore,
+            certificateNumber: cert.certificateNumber,
+            verificationUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/verify/${cert.verificationToken}`,
+            verificationToken: cert.verificationToken,
+          },
+        },
+        relatedEntityType: 'Certificate',
+        relatedEntityId: cert._id as any,
       });
+
+      if (dept?.hodRef) {
+        await notify({
+          userId: dept.hodRef,
+          type: 'training',
+          title: 'Faculty Certification Achieved',
+          message: `${req.user?.name} has achieved official certification in "${program?.title || assessment.title}" with score ${percentageScore}%.`,
+          channels: ['in_app'],
+          relatedEntityType: 'Certificate',
+          relatedEntityId: cert._id as any,
+        });
+      }
+    } else if (passed === false) {
+      // Failed attempt: record failed timestamp for cooldown calculation
+      reservedEnrollment.lastFailedAttemptAt = new Date();
+      await reservedEnrollment.save();
+    } else {
+      // Pending subjective evaluation
+      await reservedEnrollment.save();
     }
 
-    await logAudit(userId, 'create', 'CourseAssessmentSubmission', submission._id,
-      `Submitted course assessment for program ${programId} — Score: ${percentageScore}% (Passed: ${passed})`, null, submission, req.ip, req.headers['user-agent']);
+    await logAudit(
+      userId,
+      'create',
+      'CourseResult',
+      courseResult._id,
+      `Assessment attempt ${attemptNumber} for course ${programId} — Score: ${percentageScore}% (Passed: ${passed})`,
+      null,
+      courseResult,
+      req.ip,
+      req.headers['user-agent']
+    );
 
     res.json({
       success: true,
-      data: submission,
-      summary: { totalScore, maxPossibleScore, percentageScore, passed, status }
+      data: {
+        result: courseResult,
+        submission,
+        attemptNumber,
+        remainingAttempts: Math.max(0, maxAttempts - attemptNumber),
+        passed,
+        status,
+      },
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 };
 
-// GET /api/v1/training/programs/:id/assessment/mine — Faculty
+// GET /api/v1/training/programs/:id/assessment/submissions/mine — Faculty gets submission
 export const getMySubmission = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id: programId } = req.params;
-    const submission = await CourseAssessmentSubmission.findOne({ programId, userId: req.user?._id })
-      .populate('assessmentId', 'title passingScore instructions');
-    res.json({ success: true, data: submission });
+    const userId = req.user?._id;
+
+    const [submission, results] = await Promise.all([
+      CourseAssessmentSubmission.findOne({ programId, userId }).populate('assessmentId', 'title passingScore'),
+      CourseResult.find({ courseId: programId, teacherId: userId }).populate('certificateId').sort({ attemptNumber: 1 }),
+    ]);
+
+    res.json({ success: true, data: submission, results });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 };
 
-// GET /api/v1/training/programs/:id/assessment/submissions — Organizer / HOD
+// GET /api/v1/training/programs/:id/assessment/submissions — Instructor lists all submissions
 export const getProgramSubmissions = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { id: programId } = req.params;
+    const programId = (Array.isArray(req.params.id) ? req.params.id[0] : req.params.id) as string;
     const submissions = await CourseAssessmentSubmission.find({ programId })
       .populate('userId', 'name email department')
       .populate('assessmentId', 'title passingScore')
@@ -484,7 +661,10 @@ export const gradeSubmission = async (req: AuthRequest, res: Response): Promise<
     const { answers, totalScore, passed } = req.body;
 
     const sub = await CourseAssessmentSubmission.findById(subId);
-    if (!sub) { res.status(404).json({ success: false, error: 'Submission not found' }); return; }
+    if (!sub) {
+      res.status(404).json({ success: false, error: 'Submission not found' });
+      return;
+    }
 
     const percentageScore = sub.maxPossibleScore > 0 ? Math.round((totalScore / sub.maxPossibleScore) * 100) : 0;
     const isPassed = passed !== undefined ? passed : percentageScore >= 60;
@@ -503,16 +683,153 @@ export const gradeSubmission = async (req: AuthRequest, res: Response): Promise<
       { new: true }
     );
 
-    // If passed, auto-complete enrollment & link recommendation
-    if (isPassed && updated) {
-      await TrainingEnrollment.findByIdAndUpdate(updated.enrollmentId, { status: 'completed', completionDate: new Date() });
-      await TrainingRecommendation.findOneAndUpdate(
-        { enrollmentId: updated.enrollmentId },
-        { status: 'completed', scoreAfterCompletion: percentageScore }
-      );
+    // Update corresponding CourseResult
+    const courseResult = await CourseResult.findOne({
+      enrollmentId: sub.enrollmentId,
+      status: 'pending',
+    }).sort({ attemptNumber: -1 });
+
+    if (courseResult) {
+      courseResult.totalScore = totalScore;
+      courseResult.score = percentageScore;
+      courseResult.passed = isPassed;
+      courseResult.status = 'graded';
+      courseResult.gradedBy = req.user?._id as any;
+      courseResult.gradedAt = new Date();
+      if (answers) courseResult.answers = answers;
+      await courseResult.save();
     }
 
-    res.json({ success: true, data: updated });
+    const enrollment = await TrainingEnrollment.findById(sub.enrollmentId);
+    const program = await TrainingProgram.findById(sub.programId);
+
+    // ── If now passed, trigger certification & closed-loop sync ──
+    if (isPassed && enrollment && enrollment.status !== 'certified') {
+      enrollment.status = 'certified';
+      enrollment.completionDate = new Date();
+      enrollment.lastPassedAttemptAt = new Date();
+      enrollment.lastFailedAttemptAt = undefined;
+
+      const prevCert = await Certificate.findOne({
+        enrollmentId: enrollment._id,
+        status: 'revoked',
+      }).sort({ createdAt: -1 });
+
+      const teacherUser = await User.findById(enrollment.userId).populate('department');
+      const dept = teacherUser?.department as any;
+
+      const cert = await issueCertificate({
+        teacher: teacherUser || { _id: enrollment.userId, name: 'Faculty Member' },
+        course: program || { _id: sub.programId, title: 'Course Assessment' },
+        enrollmentId: enrollment._id,
+        resultId: (courseResult?._id || sub._id) as any,
+        departmentName: dept?.name || 'General',
+        departmentCode: dept?.code || 'GEN',
+        supersedesId: prevCert?._id,
+      });
+
+      if (courseResult) {
+        courseResult.certificateId = cert._id as any;
+        await courseResult.save();
+      }
+
+      enrollment.certificateId = cert._id as any;
+      await enrollment.save();
+
+      // Evidentiary Competency Gap Record
+      if (program?.skillAreaIds && program.skillAreaIds.length > 0) {
+        await CompetencyRecord.updateMany(
+          { userId: enrollment.userId, skillArea: { $in: program.skillAreaIds } },
+          {
+            $push: {
+              assessments: {
+                source: 'training_course',
+                score: percentageScore,
+                date: new Date(),
+                notes: `Certified in course: ${program.title} (Score: ${percentageScore}%)`,
+              },
+            },
+          }
+        );
+      }
+
+      // Faculty Profile certification history
+      await FacultyProfile.findOneAndUpdate(
+        { userId: enrollment.userId },
+        {
+          $push: {
+            certifications: {
+              name: program?.title || 'Course Certification',
+              issuingBody: program?.organizer || 'AcademiaSync Academy',
+              issueDate: cert.issuedDate,
+              expiryDate: cert.expiryDate,
+              certificateUrl: `/api/v1/certificates/verify/${cert.verificationToken}`,
+            },
+          },
+        }
+      );
+
+      // Workflow recommendation status
+      await TrainingRecommendation.updateMany(
+        { facultyId: enrollment.userId, programId: sub.programId },
+        { status: 'completed', enrollmentId: enrollment._id }
+      );
+    } else if (!isPassed && enrollment) {
+      enrollment.lastFailedAttemptAt = new Date();
+      await enrollment.save();
+    }
+
+    // Dispatch Grading Completed Notification (in_app + email)
+    if (enrollment) {
+      const feedbackText = answers.find((a: any) => a.feedback)?.feedback || 'Review question breakdown in course workspace.';
+      await notify({
+        userId: enrollment.userId,
+        type: 'training',
+        title: isPassed ? 'Assessment Graded: Passed & Certified ✓' : 'Assessment Graded: Results Available',
+        message: `Your assessment submission for "${program?.title || 'Training Program'}" was graded. Final Score: ${percentageScore}%.`,
+        channels: ['in_app', 'email'],
+        emailData: {
+          template: 'gradingCompleted',
+          subject: `Assessment Evaluated: ${program?.title || 'Training Program'}`,
+          variables: {
+            courseTitle: program?.title || 'Course Assessment',
+            score: percentageScore,
+            outcome: isPassed ? 'Passed & Certified' : 'Below Passing Benchmark',
+            feedback: feedbackText,
+            courseUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/training/${sub.programId}/learn`,
+          },
+        },
+        relatedEntityType: 'CourseAssessmentSubmission',
+        relatedEntityId: sub._id,
+      });
+    }
+
+    res.json({ success: true, data: updated, courseResult });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// GET /api/v1/training/programs/:id/results/mine — Faculty views all attempt results & feedback
+export const getMyCourseResults = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const programId = (Array.isArray(req.params.id) ? req.params.id[0] : req.params.id) as string;
+    const userId = req.user?._id;
+
+    const [results, enrollment] = await Promise.all([
+      CourseResult.find({ courseId: programId, teacherId: userId })
+        .populate('certificateId')
+        .sort({ attemptNumber: 1 }),
+      TrainingEnrollment.findOne({ programId, userId }).populate('certificateId'),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        results,
+        enrollment,
+      },
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

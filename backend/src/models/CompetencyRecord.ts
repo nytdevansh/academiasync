@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IAssessmentEntry {
-  source: 'self' | 'hod' | 'peer' | 'student';
+  source: 'self' | 'hod' | 'peer' | 'student' | 'training_course';
   score: number; // 0–100
   date: Date;
   notes?: string;
@@ -32,7 +32,7 @@ const rubricScoreSchema = new Schema(
 
 const assessmentEntrySchema = new Schema<IAssessmentEntry>(
   {
-    source:      { type: String, enum: ['self', 'hod', 'peer', 'student'], required: true },
+    source:      { type: String, enum: ['self', 'hod', 'peer', 'student', 'training_course'], required: true },
     score:       { type: Number, min: 0, max: 100, required: true },
     date:        { type: Date, default: Date.now },
     notes:       String,

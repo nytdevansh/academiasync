@@ -50,6 +50,20 @@ export const validateEnv = (): ValidatedEnv => {
 
   console.log('🔒 Security secrets and environment configuration validated successfully.');
 
+  // 4. Non-fatal SMTP Mail Configuration Inspection
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASSWORD;
+  if (smtpHost) {
+    if (smtpUser && smtpPass) {
+      console.log(`📧 Mail transport configured: SMTP ${smtpHost}`);
+    } else {
+      console.warn('⚠️  SMTP_HOST set without credentials. Email will use Ethereal / test preview mode.');
+    }
+  } else {
+    console.log('ℹ️  SMTP_HOST not set — email service defaulting to local dev mode (Ethereal test accounts / console preview).');
+  }
+
   return {
     PORT: Number(process.env.PORT) || 5000,
     MONGO_URI: mongoUri as string,

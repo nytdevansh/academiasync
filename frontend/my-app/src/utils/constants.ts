@@ -105,6 +105,7 @@ export const NAV_SECTIONS = {
     { label: 'Main', items: [
       { path: '/dashboard', icon: 'LayoutDashboard', label: 'Dashboard' },
       { path: '/profile', icon: 'UserCircle', label: 'My Profile' },
+      { path: '/certificates', icon: 'Award', label: 'My Credentials' },
       { path: '/assessments', icon: 'CheckSquare', label: 'Assessments & Surveys' },
       { path: '/training/catalog', icon: 'GraduationCap', label: 'Training Catalog' },
       { path: '/training/my-enrollments', icon: 'BookOpen', label: 'My Enrollments' },
@@ -116,10 +117,12 @@ export const NAV_SECTIONS = {
     { label: 'Main', items: [
       { path: '/dashboard', icon: 'LayoutDashboard', label: 'Dashboard' },
       { path: '/profile', icon: 'UserCircle', label: 'My Profile' },
+      { path: '/certificates', icon: 'Award', label: 'My Credentials' },
     ]},
     { label: 'Department', items: [
       { path: '/assessments', icon: 'CheckSquare', label: 'Dept. Assessments' },
       { path: '/training/approvals', icon: 'CheckSquare', label: 'Training Approvals' },
+      { path: '/training/grading', icon: 'CheckSquare', label: 'Course Grading' },
       { path: '/training/catalog', icon: 'GraduationCap', label: 'Training Catalog' },
       { path: '/competency/gap-analysis', icon: 'TrendingUp', label: 'Gap Analysis' },
       { path: '/appraisals/department', icon: 'ClipboardList', label: 'Dept. Appraisals' },
@@ -131,10 +134,13 @@ export const NAV_SECTIONS = {
   dean: [
     { label: 'Overview', items: [
       { path: '/dashboard', icon: 'LayoutDashboard', label: 'Dashboard' },
+      { path: '/profile', icon: 'UserCircle', label: 'My Profile' },
+      { path: '/certificates', icon: 'Award', label: 'My Credentials' },
     ]},
     { label: 'Institution', items: [
       { path: '/assessments', icon: 'CheckSquare', label: 'Assessments & Surveys' },
       { path: '/training/catalog', icon: 'GraduationCap', label: 'Training Programs' },
+      { path: '/training/grading', icon: 'CheckSquare', label: 'Course Grading' },
       { path: '/competency/gap-analysis', icon: 'TrendingUp', label: 'Competency Analysis' },
       { path: '/appraisals/department', icon: 'ClipboardList', label: 'Appraisals' },
     ]},
@@ -145,6 +151,7 @@ export const NAV_SECTIONS = {
   hr: [
     { label: 'Main', items: [
       { path: '/dashboard', icon: 'LayoutDashboard', label: 'Dashboard' },
+      { path: '/certificates', icon: 'Award', label: 'My Credentials' },
       { path: '/assessments', icon: 'CheckSquare', label: 'Surveys & Feedback' },
       { path: '/reports', icon: 'BarChart2', label: 'Reports' },
     ]},
@@ -152,6 +159,7 @@ export const NAV_SECTIONS = {
   administrator: [
     { label: 'Main', items: [
       { path: '/dashboard', icon: 'LayoutDashboard', label: 'Dashboard' },
+      { path: '/certificates', icon: 'Award', label: 'My Credentials' },
     ]},
     { label: 'Management', items: [
       { path: '/admin/users', icon: 'Users', label: 'Users' },
@@ -159,6 +167,7 @@ export const NAV_SECTIONS = {
       { path: '/assessments', icon: 'CheckSquare', label: 'Assessments & Surveys' },
       { path: '/training/catalog', icon: 'GraduationCap', label: 'Training Programs' },
       { path: '/training/approvals', icon: 'CheckSquare', label: 'Approvals' },
+      { path: '/training/grading', icon: 'CheckSquare', label: 'Course Grading' },
       { path: '/appraisals/cycles', icon: 'ClipboardList', label: 'Appraisal Cycles' },
       { path: '/competency/gap-analysis', icon: 'TrendingUp', label: 'Competency' },
     ]},

@@ -5,6 +5,7 @@ import User from '../models/User';
 import Notification from '../models/Notification';
 import { AuthRequest } from '../middlewares/auth';
 import { logAudit } from '../services/auditService';
+import { notify } from '../services/notificationService';
 
 // ── Programs ──────────────────────────────────────────
 
@@ -80,10 +81,29 @@ export const enrollInProgram = async (req: AuthRequest, res: Response): Promise<
 
     const enrollment: any = await TrainingEnrollment.create({ userId: req.user?._id as any, programId: programId as any, nominatedBy: req.user?._id as any });
 
-    // Notify HOD
+    // Notify HOD (In-app + Email)
     const hod: any = await User.findOne({ role: 'hod', department: req.user?.department });
     if (hod) {
-      await Notification.create({ userId: hod._id, type: 'training', title: 'New Training Nomination', message: `${req.user?.name} has nominated for "${program.title}"`, relatedEntityType: 'TrainingEnrollment', relatedEntityId: enrollment._id });
+      await notify({
+        userId: hod._id,
+        type: 'training',
+        title: 'New Training Nomination',
+        message: `${req.user?.name} has nominated for "${program.title}"`,
+        channels: ['in_app', 'email'],
+        emailData: {
+          template: 'nominationReceived',
+          subject: `Faculty Nomination: ${program.title}`,
+          variables: {
+            facultyName: req.user?.name || 'Faculty Member',
+            courseTitle: program.title,
+            programType: program.type,
+            startDate: new Date(program.startDate).toLocaleDateString(),
+            actionUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/training/approvals`,
+          },
+        },
+        relatedEntityType: 'TrainingEnrollment',
+        relatedEntityId: enrollment._id,
+      });
     }
 
     await logAudit(req.user?._id, 'create', 'TrainingEnrollment', enrollment._id, `Enrolled in: ${program.title}`, null, enrollment, req.ip, req.headers['user-agent']);
@@ -245,6 +265,81 @@ export const completeEnrollment = async (req: AuthRequest, res: Response): Promi
 
     await logAudit(req.user?._id, 'update', 'TrainingEnrollment', req.params.id, 'Marked as completed with feedback', { status: 'attended' }, { status: 'completed' }, req.ip, req.headers['user-agent']);
     res.json({ success: true, data: updated });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// POST /api/v1/training/programs/:id/enrollments/:enrollmentId/reset-retake — Admin / HOD / Dean
+export const resetEnrollmentForRetake = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id: programId, enrollmentId } = req.params;
+    const { reason } = req.body;
+
+    if (!reason || typeof reason !== 'string') {
+      res.status(400).json({
+        success: false,
+        error: 'A justification reason is required to reset an enrollment for retake.',
+      });
+      return;
+    }
+
+    const enrollment = await TrainingEnrollment.findOne({ _id: enrollmentId, programId });
+    if (!enrollment) {
+      res.status(404).json({ success: false, error: 'Enrollment record not found' });
+      return;
+    }
+
+    const prevData = {
+      status: enrollment.status,
+      attemptsCount: enrollment.attemptsCount,
+      lastFailedAttemptAt: enrollment.lastFailedAttemptAt,
+    };
+
+    enrollment.status = 'attended';
+    enrollment.attemptsCount = 0;
+    enrollment.lastFailedAttemptAt = undefined;
+    await enrollment.save();
+
+    await logAudit(
+      req.user?._id,
+      'update',
+      'TrainingEnrollment',
+      enrollment._id,
+      `Reset enrollment for assessment retake. Reason: ${reason}`,
+      prevData,
+      { status: 'attended', attemptsCount: 0 },
+      req.ip,
+      req.headers['user-agent']
+    );
+
+    // Notify faculty member (In-app + Email)
+    const program = await TrainingProgram.findById(programId).select('title');
+    await notify({
+      userId: enrollment.userId,
+      type: 'training',
+      title: 'Assessment Retake Reset Granted',
+      message: `Your assessment retake attempts for "${program?.title || 'Training Program'}" have been reset.`,
+      channels: ['in_app', 'email'],
+      emailData: {
+        template: 'retakeResetGranted',
+        subject: `Retake Reset Granted: ${program?.title || 'Training Program'}`,
+        variables: {
+          courseTitle: program?.title || 'Course Assessment',
+          grantedBy: req.user?.name || 'Academic Administration',
+          reason: reason || 'Administrative reset approved',
+          courseUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/training/${programId}/learn`,
+        },
+      },
+      relatedEntityType: 'TrainingEnrollment',
+      relatedEntityId: enrollment._id,
+    });
+
+    res.json({
+      success: true,
+      message: 'Enrollment reset successfully for assessment retake',
+      data: enrollment,
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

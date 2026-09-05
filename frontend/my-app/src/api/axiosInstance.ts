@@ -33,9 +33,23 @@ axiosInstance.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 responses with automatic silent refresh rotation
+// Global server clock skew compensation (in milliseconds)
+export let serverTimeOffset = 0;
+
+export const getServerNow = (): number => Date.now() + serverTimeOffset;
+
+// Handle 401 responses with automatic silent refresh rotation & record server time
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const serverDateHeader = response.headers?.date;
+    if (serverDateHeader) {
+      const serverTime = new Date(serverDateHeader).getTime();
+      if (!isNaN(serverTime)) {
+        serverTimeOffset = serverTime - Date.now();
+      }
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
@@ -59,6 +73,7 @@ axiosInstance.interceptors.response.use(
           failedQueue.push({ resolve, reject });
         })
           .then((newToken) => {
+            originalRequest._retry = true;
             if (originalRequest.headers) {
               originalRequest.headers.Authorization = `Bearer ${newToken}`;
             }
@@ -107,7 +122,7 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-const handleAuthFailure = () => {
+const handleAuthFailure = (reason = 'session_expired') => {
   localStorage.removeItem('token');
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('user');
@@ -115,10 +130,10 @@ const handleAuthFailure = () => {
 
   const publicPaths = ['/', '/academics', '/faculty', '/students', '/departments', '/notices', '/contact', '/login'];
   const currentPath = window.location.pathname;
-  const isPublic = publicPaths.includes(currentPath);
+  const isPublic = publicPaths.includes(currentPath) || currentPath.startsWith('/verify/');
 
   if (!isPublic) {
-    window.location.href = `/login?from=${encodeURIComponent(currentPath)}`;
+    window.location.href = `/login?from=${encodeURIComponent(currentPath)}&reason=${reason}`;
   }
 };
 
