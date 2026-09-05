@@ -24,6 +24,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { getDashboardStats } from '../../api/reports';
 import { getPendingApprovals, approveEnrollment, rejectEnrollment, getPrograms } from '../../api/training';
 import { getAllUsers } from '../../api/users';
@@ -96,7 +97,7 @@ export const HODDashboard: React.FC = () => {
       if (r?.success) setRecommendations(r.data || []);
       if (c?.success) setCompliance(c.data || null);
     } catch {
-      setStats({ totalFaculty: 14, pendingApprovals: 3, trainingCoverage: 78, totalEnrollments: 28, complianceRate: 85 });
+      setStats(null);
     } finally {
       setLoading(false);
     }
@@ -194,11 +195,6 @@ export const HODDashboard: React.FC = () => {
 
   if (loading) return <LoadingSpinner text="Loading HOD dashboard..." />;
 
-  const mockCompetencyData = [
-    { name: 'Beginner', value: 2 }, { name: 'Developing', value: 4 },
-    { name: 'Proficient', value: 5 }, { name: 'Advanced', value: 3 }, { name: 'Expert', value: 1 },
-  ];
-
   const selectedProgramObj = programsList.find(p => p._id === selectedProgramId);
   const programEffectiveness = selectedProgramObj?.effectiveness;
 
@@ -211,7 +207,7 @@ export const HODDashboard: React.FC = () => {
             Head of Department Overview
           </h1>
           <p className="text-xs font-medium text-slate-500 mt-1">
-            {user?.department && typeof user.department !== 'string' ? (user.department as any).name : 'Computer Science & Engineering'} • Faculty Operations &amp; Enforcement
+            {user?.department && typeof user.department !== 'string' ? (user.department as any).name : 'Academic Department'} • Faculty Operations &amp; Enforcement
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -240,9 +236,9 @@ export const HODDashboard: React.FC = () => {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard label="Total Department Faculty" value={stats?.totalFaculty || 14} icon={<Users className="w-5 h-5 text-blue-600" />} color="blue" subtitle="Active teaching personnel" />
-        <StatCard label="Pending Approvals" value={stats?.pendingApprovals || pending.length} icon={<CheckSquare className="w-5 h-5 text-amber-600" />} color="gold" subtitle={pending.length > 0 ? `${pending.length} nominations need review` : 'All caught up'} />
-        <StatCard label="Training Compliance" value={`${compliance?.complianceRate ?? stats?.complianceRate ?? 85}%`} icon={<ShieldCheck className="w-5 h-5 text-teal-600" />} color="teal" subtitle="Assigned goals fulfilled" />
+        <StatCard label="Total Department Faculty" value={stats?.totalFaculty ?? facultyList.length} icon={<Users className="w-5 h-5 text-blue-600" />} color="blue" subtitle="Active teaching personnel" />
+        <StatCard label="Pending Approvals" value={stats?.pendingApprovals ?? pending.length} icon={<CheckSquare className="w-5 h-5 text-amber-600" />} color="gold" subtitle={pending.length > 0 ? `${pending.length} nominations need review` : 'All caught up'} />
+        <StatCard label="Training Compliance" value={`${compliance?.complianceRate ?? stats?.complianceRate ?? 0}%`} icon={<ShieldCheck className="w-5 h-5 text-teal-600" />} color="teal" subtitle="Assigned goals fulfilled" />
         <StatCard label="Overdue Recommendations" value={compliance?.overdue ?? stats?.recommendationsOverdue ?? 0} icon={<AlertTriangle className="w-5 h-5 text-rose-600" />} color="rose" subtitle="Requires escalation" />
       </div>
 
@@ -411,15 +407,10 @@ export const HODDashboard: React.FC = () => {
               <p className="text-xs text-slate-500">Skill matrix across department faculty</p>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={mockCompetencyData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
-                {mockCompetencyData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-              </Pie>
-              <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0' }} />
-              <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#64748B' }} />
-            </PieChart>
-          </ResponsiveContainer>
+          <EmptyState
+            title="No competency data"
+            description="Faculty competency records have not been submitted for this department yet."
+          />
         </Card>
 
         <Card className="lg:col-span-6">
@@ -429,18 +420,25 @@ export const HODDashboard: React.FC = () => {
               <p className="text-xs text-slate-500">Department nomination lifecycle</p>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={[
-              { status: 'Nominated', count: 3 }, { status: 'Approved', count: 8 },
-              { status: 'Attended', count: 5 }, { status: 'Completed', count: 12 },
-            ]} barSize={28}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-              <XAxis dataKey="status" tick={{ fill: '#64748B', fontSize: 11 }} />
-              <YAxis tick={{ fill: '#64748B', fontSize: 11 }} />
-              <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0' }} />
-              <Bar dataKey="count" fill="#0F766E" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {pending.length > 0 || (stats?.totalEnrollments && stats.totalEnrollments > 0) ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={[
+                { status: 'Pending', count: pending.length },
+                { status: 'Active', count: stats?.totalEnrollments || 0 },
+              ]} barSize={28}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                <XAxis dataKey="status" tick={{ fill: '#64748B', fontSize: 11 }} />
+                <YAxis tick={{ fill: '#64748B', fontSize: 11 }} />
+                <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0' }} />
+                <Bar dataKey="count" fill="#0F766E" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyState
+              title="No training participation"
+              description="No nominations or enrollments logged for this department yet."
+            />
+          )}
         </Card>
       </div>
 

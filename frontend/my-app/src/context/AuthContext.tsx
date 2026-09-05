@@ -131,17 +131,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(null);
   };
 
-  // 1-Click Quick Login for testing & evaluation
+  // Quick Login for testing with backend validation
   const quickLogin = async (roleKey: string): Promise<User> => {
     setIsLoading(true);
-    const demo = DEMO_CREDENTIALS.find(d => 
+    const cred = DEMO_CREDENTIALS.find(d => 
       d.role.toLowerCase().includes(roleKey.toLowerCase()) || 
       d.email.toLowerCase().includes(roleKey.toLowerCase())
     ) || DEMO_CREDENTIALS[0];
 
     try {
-      // Attempt actual backend login first
-      const res: any = await apiLogin(demo.email, demo.password);
+      const res: any = await apiLogin(cred.email, cred.password);
       if (res.success && res.data) {
         const receivedToken = res.data.token;
         const receivedRefreshToken = res.data.refreshToken;
@@ -159,34 +158,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           return receivedUser;
         }
       }
-    } catch {
-      // Fallback
+      throw new Error('Authentication failed');
+    } catch (err: any) {
+      setIsLoading(false);
+      throw new Error(err.response?.data?.error || err.message || 'Authentication failed');
     }
-
-    const roleMap: Record<string, UserRole> = {
-      faculty: 'faculty_member',
-      hod: 'hod',
-      dean: 'dean',
-      hr: 'hr',
-      admin: 'administrator',
-      administrator: 'administrator',
-    };
-
-    const assignedRole: UserRole = roleMap[roleKey.toLowerCase()] || 'faculty_member';
-
-    const fallbackUser: User = {
-      _id: 'usr_' + Date.now(),
-      name: demo.role + ' User',
-      email: demo.email,
-      role: assignedRole,
-      status: 'active',
-      department: { _id: 'd1', name: 'Computer Science & Engineering', code: 'CSE', isActive: true },
-    };
-
-    const fallbackToken = 'jwt_demo_token_' + btoa(JSON.stringify({ id: fallbackUser._id, role: fallbackUser.role, exp: Date.now() + 86400000 }));
-    login(fallbackToken, fallbackUser);
-    setIsLoading(false);
-    return fallbackUser;
   };
 
   return (

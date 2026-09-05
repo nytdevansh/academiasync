@@ -21,19 +21,8 @@ export const DeanDashboard: React.FC = () => {
         if (s.success) setStats(s.data);
         if (o.success) setOverview(o.data);
       } catch {
-        setStats({ totalUsers: 87, totalDepartments: 6, pendingApprovals: 4, auditEventsToday: 18, complianceRate: 92, overdueRecommendations: 1 });
-        setOverview({
-          totalFaculty: 195,
-          avgProfileCompleteness: 82,
-          facultyByDepartment: [
-            { deptName: 'CSE', count: 42 },
-            { deptName: 'ECE', count: 36 },
-            { deptName: 'MECH', count: 30 },
-            { deptName: 'CIVIL', count: 25 },
-            { deptName: 'MBA', count: 28 },
-            { deptName: 'SCI', count: 34 },
-          ],
-        });
+        setStats(null);
+        setOverview(null);
       } finally {
         setLoading(false);
       }
@@ -43,14 +32,9 @@ export const DeanDashboard: React.FC = () => {
 
   if (loading) return <LoadingSpinner text="Loading Dean dashboard..." />;
 
-  const mockTrend = [
-    { month: 'Mar', trainings: 14, appraisals: 45 },
-    { month: 'Apr', trainings: 22, appraisals: 58 },
-    { month: 'May', trainings: 28, appraisals: 64 },
-    { month: 'Jun', trainings: 35, appraisals: 78 },
-    { month: 'Jul', trainings: 26, appraisals: 70 },
-    { month: 'Aug', trainings: 42, appraisals: 92 },
-  ];
+  const trendData = overview?.monthlyTrend || [];
+  const hasTrendActivity = trendData.some((d: any) => d.trainings > 0 || d.appraisals > 0);
+  const facultyDeptData = overview?.facultyByDepartment || [];
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -68,10 +52,10 @@ export const DeanDashboard: React.FC = () => {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard label="Total Active Faculty" value={overview?.totalFaculty || 195} icon={<Users className="w-5 h-5 text-blue-600" />} color="blue" trend={{ value: 12, label: 'vs last year' }} subtitle="Across all academic schools" />
-        <StatCard label="Academic Departments" value={stats?.totalDepartments || 6} icon={<Building2 className="w-5 h-5 text-teal-600" />} color="teal" subtitle="Autonomous academic divisions" />
-        <StatCard label="Training Compliance" value={`${stats?.complianceRate || 92}%`} icon={<ShieldCheck className="w-5 h-5 text-emerald-600" />} color="emerald" subtitle="Assigned goals fulfilled" />
-        <StatCard label="Appraisals In-Progress" value={stats?.pendingApprovals || 14} icon={<Activity className="w-5 h-5 text-indigo-600" />} color="violet" subtitle="Current evaluation cycle" />
+        <StatCard label="Total Active Faculty" value={overview?.totalFaculty ?? 0} icon={<Users className="w-5 h-5 text-blue-600" />} color="blue" subtitle="Across all academic schools" />
+        <StatCard label="Academic Departments" value={stats?.totalDepartments ?? 0} icon={<Building2 className="w-5 h-5 text-teal-600" />} color="teal" subtitle="Autonomous academic divisions" />
+        <StatCard label="Training Compliance" value={stats?.complianceRate != null ? `${stats.complianceRate}%` : 'N/A'} icon={<ShieldCheck className="w-5 h-5 text-emerald-600" />} color="emerald" subtitle="Assigned goals fulfilled" />
+        <StatCard label="Appraisals In-Progress" value={stats?.pendingApprovals ?? 0} icon={<Activity className="w-5 h-5 text-indigo-600" />} color="violet" subtitle="Current evaluation cycle" />
       </div>
 
       {/* Charts Grid */}
@@ -83,17 +67,24 @@ export const DeanDashboard: React.FC = () => {
               <p className="text-xs text-slate-500">6-month institution-wide faculty growth trend</p>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={mockTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-              <XAxis dataKey="month" tick={{ fill: '#64748B', fontSize: 12 }} />
-              <YAxis tick={{ fill: '#64748B', fontSize: 12 }} />
-              <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0' }} />
-              <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#64748B' }} />
-              <Line type="monotone" dataKey="trainings" stroke="#2563EB" strokeWidth={2.5} dot={{ r: 4 }} name="FDP Enrollments" />
-              <Line type="monotone" dataKey="appraisals" stroke="#0F766E" strokeWidth={2.5} dot={{ r: 4 }} name="Appraisal Submissions" />
-            </LineChart>
-          </ResponsiveContainer>
+          {hasTrendActivity ? (
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={trendData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                <XAxis dataKey="month" tick={{ fill: '#64748B', fontSize: 12 }} />
+                <YAxis tick={{ fill: '#64748B', fontSize: 12 }} />
+                <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0' }} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#64748B' }} />
+                <Line type="monotone" dataKey="trainings" stroke="#2563EB" strokeWidth={2.5} dot={{ r: 4 }} name="FDP Enrollments" />
+                <Line type="monotone" dataKey="appraisals" stroke="#0F766E" strokeWidth={2.5} dot={{ r: 4 }} name="Appraisal Submissions" />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-48 text-xs text-slate-400 gap-2">
+              <Activity className="w-8 h-8 text-slate-300" />
+              <span>No training or appraisal trajectory data recorded in past 6 months</span>
+            </div>
+          )}
         </Card>
 
         <Card className="lg:col-span-5">
@@ -103,15 +94,22 @@ export const DeanDashboard: React.FC = () => {
               <p className="text-xs text-slate-500">Total faculty count per school</p>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={overview?.facultyByDepartment || []} layout="vertical" barSize={16}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-              <XAxis type="number" tick={{ fill: '#64748B', fontSize: 11 }} />
-              <YAxis dataKey="deptName" type="category" width={55} tick={{ fill: '#64748B', fontSize: 11 }} />
-              <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0' }} />
-              <Bar dataKey="count" fill="#2563EB" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {facultyDeptData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={facultyDeptData} layout="vertical" barSize={16}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                <XAxis type="number" tick={{ fill: '#64748B', fontSize: 11 }} />
+                <YAxis dataKey="deptName" type="category" width={55} tick={{ fill: '#64748B', fontSize: 11 }} />
+                <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0' }} />
+                <Bar dataKey="count" fill="#2563EB" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-48 text-xs text-slate-400 gap-2">
+              <Building2 className="w-8 h-8 text-slate-300" />
+              <span>No department faculty distribution data available</span>
+            </div>
+          )}
         </Card>
       </div>
     </div>
@@ -124,7 +122,7 @@ export const AdminDashboard: React.FC = () => {
 
   useEffect(() => {
     getDashboardStats().then(r => { if (r.success) setStats(r.data); }).catch(() => {
-      setStats({ totalUsers: 87, totalDepartments: 6, pendingApprovals: 5, auditEventsToday: 28 });
+      setStats(null);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -147,10 +145,10 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard label="Registered Users" value={stats?.totalUsers || 87} icon={<Users className="w-5 h-5 text-blue-600" />} color="blue" subtitle="Faculty, HODs, Deans & Admins" />
-        <StatCard label="Departments" value={stats?.totalDepartments || 6} icon={<Building2 className="w-5 h-5 text-teal-600" />} color="teal" subtitle="Active academic divisions" />
-        <StatCard label="Pending Workflows" value={stats?.pendingApprovals || 5} icon={<BookOpen className="w-5 h-5 text-amber-600" />} color="gold" subtitle="Approvals in pipeline" />
-        <StatCard label="Audit Events (24h)" value={stats?.auditEventsToday || 28} icon={<Activity className="w-5 h-5 text-indigo-600" />} color="violet" subtitle="Logged security actions" />
+        <StatCard label="Registered Users" value={stats?.totalUsers ?? 0} icon={<Users className="w-5 h-5 text-blue-600" />} color="blue" subtitle="Faculty, HODs, Deans & Admins" />
+        <StatCard label="Departments" value={stats?.totalDepartments ?? 0} icon={<Building2 className="w-5 h-5 text-teal-600" />} color="teal" subtitle="Active academic divisions" />
+        <StatCard label="Pending Workflows" value={stats?.pendingApprovals ?? 0} icon={<BookOpen className="w-5 h-5 text-amber-600" />} color="gold" subtitle="Approvals in pipeline" />
+        <StatCard label="Audit Events (24h)" value={stats?.auditEventsToday ?? 0} icon={<Activity className="w-5 h-5 text-indigo-600" />} color="violet" subtitle="Logged security actions" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

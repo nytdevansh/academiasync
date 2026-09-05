@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen,
@@ -40,11 +40,6 @@ import {
   RECOMMENDATION_STATUS_COLORS
 } from '../../utils/constants';
 
-const MOCK_MONTHLY = [
-  { month: 'Mar', hours: 8 }, { month: 'Apr', hours: 16 }, { month: 'May', hours: 6 },
-  { month: 'Jun', hours: 24 }, { month: 'Jul', hours: 12 }, { month: 'Aug', hours: 20 },
-];
-
 export const FacultyDashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -75,13 +70,13 @@ export const FacultyDashboard: React.FC = () => {
       if (r.success) setRecommendations(r.data || []);
     } catch {
       setStats({
-        profileCompleteness: 85,
-        totalTrainings: 4,
-        activeTrainings: 2,
-        completedTrainings: 2,
-        latestAppraisalScore: 88,
-        unreadNotifications: 2,
-        recommendedTrainings: 1
+        profileCompleteness: 0,
+        totalTrainings: 0,
+        activeTrainings: 0,
+        completedTrainings: 0,
+        latestAppraisalScore: null,
+        unreadNotifications: 0,
+        recommendedTrainings: 0
       });
     } finally {
       setLoading(false);
@@ -123,6 +118,34 @@ export const FacultyDashboard: React.FC = () => {
   }, {});
   const pieData = Object.entries(statusBreakdown).map(([name, value]) => ({ name: TRAINING_STATUS_LABELS[name] || name, value }));
 
+  const monthlyHoursData = useMemo(() => {
+    const monthsMap = new Map<string, number>();
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = d.toLocaleString('en-US', { month: 'short' });
+      monthsMap.set(key, 0);
+    }
+
+    enrollments.forEach((e) => {
+      if (['completed', 'certified', 'attended'].includes(e.status)) {
+        const date = e.completionDate || e.updatedAt || e.createdAt;
+        if (date) {
+          const d = new Date(date);
+          const key = d.toLocaleString('en-US', { month: 'short' });
+          if (monthsMap.has(key)) {
+            const hours = (e.programId as any)?.durationHours || 8;
+            monthsMap.set(key, (monthsMap.get(key) || 0) + hours);
+          }
+        }
+      }
+    });
+
+    const data = Array.from(monthsMap.entries()).map(([month, hours]) => ({ month, hours }));
+    const totalHours = data.reduce((sum, d) => sum + d.hours, 0);
+    return { data, totalHours };
+  }, [enrollments]);
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Welcome Banner */}
@@ -146,10 +169,10 @@ export const FacultyDashboard: React.FC = () => {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard label="Profile Completeness" value={`${stats?.profileCompleteness || 85}%`} icon={<Star className="w-5 h-5 text-amber-600" />} color="gold" subtitle="Qualifications & teaching history" />
-        <StatCard label="Active Trainings" value={stats?.activeTrainings || 2} icon={<BookOpen className="w-5 h-5 text-blue-600" />} color="blue" subtitle="Current nominations & FDPs" />
-        <StatCard label="Latest Appraisal" value={stats?.latestAppraisalScore ? `${stats.latestAppraisalScore}%` : '88%'} icon={<Award className="w-5 h-5 text-teal-600" />} color="teal" subtitle="Overall performance score" />
-        <StatCard label="Completed FDPs" value={stats?.completedTrainings || 2} icon={<CheckCircle2 className="w-5 h-5 text-emerald-600" />} color="emerald" subtitle="Certified training programs" />
+        <StatCard label="Profile Completeness" value={`${stats?.profileCompleteness ?? 0}%`} icon={<Star className="w-5 h-5 text-amber-600" />} color="gold" subtitle="Qualifications & teaching history" />
+        <StatCard label="Active Trainings" value={stats?.activeTrainings ?? 0} icon={<BookOpen className="w-5 h-5 text-blue-600" />} color="blue" subtitle="Current nominations & FDPs" />
+        <StatCard label="Latest Appraisal" value={stats?.latestAppraisalScore != null ? `${stats.latestAppraisalScore}%` : 'N/A'} icon={<Award className="w-5 h-5 text-teal-600" />} color="teal" subtitle="Overall performance score" />
+        <StatCard label="Completed FDPs" value={stats?.completedTrainings ?? 0} icon={<CheckCircle2 className="w-5 h-5 text-emerald-600" />} color="emerald" subtitle="Certified training programs" />
       </div>
 
       {/* Recommended For You Section */}
@@ -311,15 +334,25 @@ export const FacultyDashboard: React.FC = () => {
             </div>
             <Badge variant="info">FDP Activity</Badge>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={MOCK_MONTHLY} barSize={28}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-              <XAxis dataKey="month" tick={{ fill: '#64748B', fontSize: 12 }} />
-              <YAxis tick={{ fill: '#64748B', fontSize: 12 }} />
-              <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
-              <Bar dataKey="hours" fill="#2563EB" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {monthlyHoursData.totalHours > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={monthlyHoursData.data} barSize={28}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                <XAxis dataKey="month" tick={{ fill: '#64748B', fontSize: 12 }} />
+                <YAxis tick={{ fill: '#64748B', fontSize: 12 }} />
+                <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
+                <Bar dataKey="hours" fill="#2563EB" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-48 text-xs text-slate-400 gap-2">
+              <Award className="w-8 h-8 text-slate-300" />
+              <span>No completed training hours logged in the past 6 months</span>
+              <Button size="sm" variant="outline" onClick={() => navigate('/training/catalog')}>
+                Browse Training Programs
+              </Button>
+            </div>
+          )}
         </Card>
 
         {/* Training Status Pie Chart */}

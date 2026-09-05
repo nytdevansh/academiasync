@@ -108,7 +108,59 @@ export const facultyOverview = async (req: AuthRequest, res: Response): Promise<
       { $project: { deptName: '$dept.name', count: 1 } },
     ]);
 
-    res.json({ success: true, data: { totalFaculty, departments: departments.length, avgProfileCompleteness: profileStats[0]?.avgCompleteness || 0, trainingStats, facultyByDepartment: byDept } });
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    sixMonthsAgo.setDate(1);
+    sixMonthsAgo.setHours(0, 0, 0, 0);
+
+    const [trainingsByMonth, appraisalsByMonth] = await Promise.all([
+      TrainingEnrollment.aggregate([
+        { $match: { createdAt: { $gte: sixMonthsAgo } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+      Appraisal.aggregate([
+        { $match: { createdAt: { $gte: sixMonthsAgo } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+    ]);
+
+    const trainMap = new Map<string, number>(trainingsByMonth.map((t: any) => [t._id, t.count]));
+    const appMap = new Map<string, number>(appraisalsByMonth.map((a: any) => [a._id, a.count]));
+
+    const monthlyTrend = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const monthLabel = d.toLocaleString('en-US', { month: 'short' });
+      monthlyTrend.push({
+        month: monthLabel,
+        trainings: trainMap.get(key) || 0,
+        appraisals: appMap.get(key) || 0,
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        totalFaculty,
+        departments: departments.length,
+        avgProfileCompleteness: profileStats[0]?.avgCompleteness || 0,
+        trainingStats,
+        facultyByDepartment: byDept,
+        monthlyTrend,
+      },
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

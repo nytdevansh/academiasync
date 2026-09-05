@@ -19,28 +19,15 @@ export const CompetencyPage: React.FC = () => {
   useEffect(() => {
     Promise.all([getMyCompetency(), getSkillAreas()])
       .then(([r, s]) => {
-        if (r.success && r.data?.length) {
+        if (r.success && r.data) {
           setRecords(r.data);
         } else {
-          // Fallback mock records for demo display
-          setRecords([
-            { _id: 'c1', currentLevel: 'advanced', targetLevel: 'expert', skillArea: { name: 'Artificial Intelligence & ML' }, gapsIdentified: ['Transformer Architectures', 'LLM Fine-Tuning'] } as any,
-            { _id: 'c2', currentLevel: 'proficient', targetLevel: 'advanced', skillArea: { name: 'Outcome Based Pedagogy' }, gapsIdentified: ['Continuous Formative Rubrics'] } as any,
-            { _id: 'c3', currentLevel: 'advanced', targetLevel: 'expert', skillArea: { name: 'High Impact Research Publishing' }, gapsIdentified: ['Q1 Journal Submissions'] } as any,
-            { _id: 'c4', currentLevel: 'proficient', targetLevel: 'proficient', skillArea: { name: 'Classroom Technology & LMS' }, gapsIdentified: [] } as any,
-            { _id: 'c5', currentLevel: 'developing', targetLevel: 'proficient', skillArea: { name: 'Grant Proposal Writing' }, gapsIdentified: ['DST/SERB Frameworks'] } as any,
-          ]);
+          setRecords([]);
         }
         if (s.success) setSkillAreas(s.data || []);
       })
       .catch(() => {
-        setRecords([
-          { _id: 'c1', currentLevel: 'advanced', targetLevel: 'expert', skillArea: { name: 'Artificial Intelligence & ML' }, gapsIdentified: ['Transformer Architectures', 'LLM Fine-Tuning'] } as any,
-          { _id: 'c2', currentLevel: 'proficient', targetLevel: 'advanced', skillArea: { name: 'Outcome Based Pedagogy' }, gapsIdentified: ['Continuous Formative Rubrics'] } as any,
-          { _id: 'c3', currentLevel: 'advanced', targetLevel: 'expert', skillArea: { name: 'High Impact Research Publishing' }, gapsIdentified: ['Q1 Journal Submissions'] } as any,
-          { _id: 'c4', currentLevel: 'proficient', targetLevel: 'proficient', skillArea: { name: 'Classroom Technology & LMS' }, gapsIdentified: [] } as any,
-          { _id: 'c5', currentLevel: 'developing', targetLevel: 'proficient', skillArea: { name: 'Grant Proposal Writing' }, gapsIdentified: ['DST/SERB Frameworks'] } as any,
-        ]);
+        setRecords([]);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -63,7 +50,16 @@ export const CompetencyPage: React.FC = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {records.length === 0 ? (
+        <Card className="p-8 text-center">
+          <EmptyState
+            title="No Competency Records Found"
+            description="You have not been evaluated or self-assessed on any skill areas yet. Assessments initiated by your HOD or completed during appraisals will populate your radar."
+          />
+        </Card>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Radar Chart */}
         <Card className="lg:col-span-6">
           <div className="flex items-center justify-between mb-4">
@@ -142,6 +138,8 @@ export const CompetencyPage: React.FC = () => {
           </BarChart>
         </ResponsiveContainer>
       </Card>
+      </>
+      )}
     </div>
   );
 };

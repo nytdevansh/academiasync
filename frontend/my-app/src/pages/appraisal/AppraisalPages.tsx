@@ -24,63 +24,21 @@ export const AppraisalListPage: React.FC = () => {
   useEffect(() => {
     Promise.all([getMyAppraisals(), getCycles()])
       .then(([a, c]) => {
-        if (a.success && a.data?.length) {
+        if (a.success && a.data) {
           setAppraisals(a.data);
         } else {
-          setAppraisals([
-            {
-              _id: 'ap1',
-              status: 'completed',
-              finalScore: 91,
-              cycleId: { title: 'Annual Faculty Appraisal Cycle 2024-2025', academicYear: '2024-2025' },
-              reviewerAssessment: { overallRemarks: 'Outstanding contribution to research publications and student mentorship.' },
-            } as any,
-          ]);
+          setAppraisals([]);
         }
 
-        if (c.success && c.data?.length) {
+        if (c.success && c.data) {
           setCycles(c.data.filter((cy: AppraisalCycle) => cy.status === 'active'));
         } else {
-          setCycles([
-            {
-              _id: 'cy1',
-              title: 'Annual Faculty Self-Assessment Cycle 2025-2026',
-              academicYear: '2025-2026',
-              status: 'active',
-              submissionDeadline: '2026-09-30',
-              criteria: [
-                { _id: 'cr1', name: 'Teaching Performance & Pedagogical Innovation', maxScore: 40, weight: 40, description: 'Student feedback, course file completion, outcome based rubrics' },
-                { _id: 'cr2', name: 'Research, Publications & Sponsored Grants', maxScore: 30, weight: 30, description: 'SCI/Scopus publications, citations, sponsored grants submitted' },
-                { _id: 'cr3', name: 'Institutional & Departmental Contributions', maxScore: 20, weight: 20, description: 'Accreditation tasks, committee roles, student clubs advisement' },
-                { _id: 'cr4', name: 'FDP & Professional Development Participation', maxScore: 10, weight: 10, description: 'Workshops, industry certifications, guest seminars conducted' },
-              ],
-            } as any,
-          ]);
+          setCycles([]);
         }
       })
       .catch(() => {
-        setAppraisals([
-          {
-            _id: 'ap1',
-            status: 'completed',
-            finalScore: 91,
-            cycleId: { title: 'Annual Faculty Appraisal Cycle 2024-2025', academicYear: '2024-2025' },
-            reviewerAssessment: { overallRemarks: 'Outstanding contribution to research publications and student mentorship.' },
-          } as any,
-        ]);
-        setCycles([
-          {
-            _id: 'cy1',
-            title: 'Annual Faculty Self-Assessment Cycle 2025-2026',
-            academicYear: '2025-2026',
-            status: 'active',
-            submissionDeadline: '2026-09-30',
-            criteria: [
-              { _id: 'cr1', name: 'Teaching Performance & Pedagogical Innovation', maxScore: 40, weight: 40, description: 'Student feedback, course file completion, outcome based rubrics' },
-              { _id: 'cr2', name: 'Research, Publications & Sponsored Grants', maxScore: 30, weight: 30, description: 'SCI/Scopus publications, citations, sponsored grants submitted' },
-            ],
-          } as any,
-        ]);
+        setAppraisals([]);
+        setCycles([]);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -101,9 +59,10 @@ export const AppraisalListPage: React.FC = () => {
       await submitSelfAssessment({ cycleId: selectedCycle._id, criteria });
       setSubmitted(true);
       setSelectedCycle(null);
-    } catch {
-      setSubmitted(true);
-      setSelectedCycle(null);
+      const a = await getMyAppraisals();
+      if (a.success && a.data) setAppraisals(a.data);
+    } catch (err: any) {
+      alert(err.response?.data?.error || err.message || 'Failed to submit faculty self-assessment');
     } finally {
       setSubmitting(false);
     }
@@ -122,9 +81,14 @@ export const AppraisalListPage: React.FC = () => {
       </div>
 
       {/* Active Cycles */}
-      {cycles.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Active Appraisal Cycles</h2>
+      <div className="space-y-4">
+        <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Active Appraisal Cycles</h2>
+        {cycles.length === 0 ? (
+          <EmptyState
+            title="No active appraisal cycles"
+            description="There are currently no open performance appraisal windows. Institutional appraisal cycles will appear here when scheduled by the Deanery."
+          />
+        ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {cycles.map(cycle => {
               const existing = appraisals.find(a => (a.cycleId as any)?._id === cycle._id);
@@ -161,8 +125,8 @@ export const AppraisalListPage: React.FC = () => {
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Self Assessment Modal Form */}
       {selectedCycle && (

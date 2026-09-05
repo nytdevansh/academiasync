@@ -140,6 +140,34 @@ export const getPendingApprovals = async (req: AuthRequest, res: Response): Prom
   }
 };
 
+// GET /api/v1/training/enrollments/retake-candidates — HOD / Dean / Admin
+export const getRetakeCandidates = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    let userFilter: any = {};
+    if (req.user?.role === 'hod') {
+      const deptUsers = await User.find({ department: req.user?.department }).select('_id');
+      userFilter = { userId: { $in: deptUsers.map(u => u._id) } };
+    }
+    const enrollments = await TrainingEnrollment.find({
+      ...userFilter,
+      attemptsCount: { $gt: 0 },
+    })
+      .populate('userId', 'name email department')
+      .populate('programId', 'title type maxAttempts passingScore')
+      .sort({ lastFailedAttemptAt: -1 });
+
+    const candidates = enrollments.filter(e => {
+      const prog = e.programId as any;
+      const max = prog?.maxAttempts || 3;
+      return (e.attemptsCount || 0) >= max;
+    });
+
+    res.json({ success: true, data: candidates });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
 // GET /api/v1/training/enrollments/department/:deptId — HOD/Dean/Admin
 export const getEnrollmentsByDepartment = async (req: AuthRequest, res: Response): Promise<void> => {
   try {

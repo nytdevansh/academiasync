@@ -80,77 +80,10 @@ export const DepartmentGapAnalysisPage: React.FC = () => {
     try {
       setLoading(true);
       const res = await getGapAnalysis(deptId);
-      if (res.success && res.data?.length) {
+      if (res.success && res.data) {
         setRecords(res.data);
       } else {
-        // Fallback demo dataset for visual inspection
-        setRecords([
-          {
-            _id: 'gap1',
-            userId: { name: 'Dr. Sarah Jenkins', email: 'sarah.jenkins@academiasync.edu' },
-            skillArea: { name: 'Artificial Intelligence & ML', category: 'Technical' },
-            currentLevel: 'developing',
-            targetLevel: 'expert',
-            currentScore: 58,
-            gap: 3,
-            hasGap: true,
-            trend: 'improving',
-            gapsIdentified: ['Transformer Architectures', 'LLM Fine-Tuning'],
-            lastAssessedDate: new Date().toISOString(),
-          },
-          {
-            _id: 'gap2',
-            userId: { name: 'Prof. Rajesh Sharma', email: 'rajesh.sharma@academiasync.edu' },
-            skillArea: { name: 'Outcome Based Pedagogy', category: 'Pedagogy' },
-            currentLevel: 'proficient',
-            targetLevel: 'advanced',
-            currentScore: 74,
-            gap: 1,
-            hasGap: true,
-            trend: 'improving',
-            gapsIdentified: ['Formative Assessment Rubrics'],
-            lastAssessedDate: new Date().toISOString(),
-          },
-          {
-            _id: 'gap3',
-            userId: { name: 'Dr. Anita Desai', email: 'anita.desai@academiasync.edu' },
-            skillArea: { name: 'High Impact Research Publishing', category: 'Research' },
-            currentLevel: 'advanced',
-            targetLevel: 'expert',
-            currentScore: 88,
-            gap: 1,
-            hasGap: true,
-            trend: 'flat',
-            gapsIdentified: ['Q1 Journal Submissions'],
-            lastAssessedDate: new Date().toISOString(),
-          },
-          {
-            _id: 'gap4',
-            userId: { name: 'Dr. Vikram Patel', email: 'vikram.patel@academiasync.edu' },
-            skillArea: { name: 'Classroom Technology & LMS', category: 'Pedagogy' },
-            currentLevel: 'expert',
-            targetLevel: 'expert',
-            currentScore: 95,
-            gap: 0,
-            hasGap: false,
-            trend: 'flat',
-            gapsIdentified: [],
-            lastAssessedDate: new Date().toISOString(),
-          },
-          {
-            _id: 'gap5',
-            userId: { name: 'Dr. Sarah Jenkins', email: 'sarah.jenkins@academiasync.edu' },
-            skillArea: { name: 'Grant Proposal Writing', category: 'Research' },
-            currentLevel: 'beginner',
-            targetLevel: 'proficient',
-            currentScore: 38,
-            gap: 2,
-            hasGap: true,
-            trend: 'declining',
-            gapsIdentified: ['DST/SERB Budget Frameworks'],
-            lastAssessedDate: new Date().toISOString(),
-          },
-        ]);
+        setRecords([]);
       }
     } catch (err: any) {
       console.error('Failed to load gap analysis', err);

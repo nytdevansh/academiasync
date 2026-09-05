@@ -23,7 +23,7 @@ import { Modal } from '../../components/ui/Modal';
 import { FormField } from '../../components/ui/FormField';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
-import { getMyEnrollments, getPendingApprovals, approveEnrollment, rejectEnrollment } from '../../api/training';
+import { getMyEnrollments, getPendingApprovals, getRetakeCandidates, approveEnrollment, rejectEnrollment } from '../../api/training';
 import { resetEnrollmentForRetake } from '../../api/lms';
 import type { TrainingEnrollment } from '../../types';
 import { TRAINING_STATUS_COLORS, TRAINING_STATUS_LABELS } from '../../utils/constants';
@@ -38,55 +38,14 @@ export const MyEnrollmentsPage: React.FC = () => {
   useEffect(() => {
     getMyEnrollments()
       .then((r) => {
-        if (r.success && r.data?.length) {
+        if (r.success && r.data) {
           setEnrollments(r.data);
         } else {
-          // Fallback mock enrollments
-          setEnrollments([
-            {
-              _id: 'en1',
-              status: 'approved',
-              nominationDate: new Date().toISOString(),
-              programId: {
-                title: 'International FDP on Generative AI & Deep Pedagogies',
-                type: 'FDP',
-                mode: 'online',
-                startDate: '2026-09-08',
-                endDate: '2026-09-14',
-              },
-            } as any,
-            {
-              _id: 'en2',
-              status: 'certified',
-              nominationDate: '2026-07-10',
-              completionDate: '2026-07-16',
-              feedback: { rating: 5, comments: 'Exemplary faculty training session on outcome based rubrics.' },
-              programId: {
-                title: 'Curriculum Outcome Mapping & NEP 2020 OBE Alignment',
-                type: 'Workshop',
-                mode: 'offline',
-                startDate: '2026-07-10',
-                endDate: '2026-07-16',
-              },
-            } as any,
-          ]);
+          setEnrollments([]);
         }
       })
       .catch(() => {
-        setEnrollments([
-          {
-            _id: 'en1',
-            status: 'approved',
-            nominationDate: new Date().toISOString(),
-            programId: {
-              title: 'International FDP on Generative AI & Deep Pedagogies',
-              type: 'FDP',
-              mode: 'online',
-              startDate: '2026-09-08',
-              endDate: '2026-09-14',
-            },
-          } as any,
-        ]);
+        setEnrollments([]);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -243,8 +202,10 @@ export const MyEnrollmentsPage: React.FC = () => {
                     {['approved', 'attended', 'completed', 'certified'].includes(enrollment.status) && (
                       <Button
                         size="sm"
-                        variant={isCert ? 'outline' : enrollment.status === 'completed' ? 'primary' : 'primary'}
-                        onClick={() => navigate(`/training/${prog?._id || 'demo'}/learn`)}
+                        variant={isCert ? 'outline' : 'primary'}
+                        onClick={() => {
+                          if (prog?._id) navigate(`/training/${prog._id}/learn`);
+                        }}
                         className="flex items-center gap-1.5"
                       >
                         <PlayCircle className="w-3.5 h-3.5" />
@@ -287,61 +248,24 @@ export const HODApprovalsPage: React.FC = () => {
 
   const fetchPending = async () => {
     try {
-      const r = await getPendingApprovals();
-      if (r.success && r.data?.length) {
+      const [r, retakeRes] = await Promise.all([
+        getPendingApprovals(),
+        getRetakeCandidates(),
+      ]);
+      if (r.success && r.data) {
         setPending(r.data);
       } else {
-        setPending([
-          {
-            _id: 'pen1',
-            nominationDate: new Date().toISOString(),
-            userId: { name: 'Dr. Ada Lovelace', email: 'ada@academiasync.edu' },
-            programId: {
-              _id: 'p1',
-              title: 'High-Impact SCI & Scopus Paper Writing Workshop',
-              type: 'Workshop',
-              startDate: '2026-09-18',
-            },
-          } as any,
-          {
-            _id: 'pen2',
-            nominationDate: new Date().toISOString(),
-            userId: { name: 'Dr. Grace Hopper', email: 'grace@academiasync.edu' },
-            programId: {
-              _id: 'p2',
-              title: 'Outcome-Based Pedagogy & Assessment Calibration',
-              type: 'FDP',
-              startDate: '2026-09-25',
-            },
-          } as any,
-        ]);
+        setPending([]);
       }
 
-      // Mock sample retake candidates if empty
-      setRetakeEnrollments([
-        {
-          _id: 'en_retake_1',
-          programId: {
-            _id: 'tp1',
-            title: 'Foundations of Deep Learning & Neural Models',
-            type: 'FDP',
-            maxAttempts: 3,
-          },
-          userId: {
-            _id: 'u1',
-            name: 'Prof. Ramesh Gupta',
-            email: 'ramesh.gupta@institution.edu',
-            department: { name: 'Computer Science & Engineering', code: 'CSE' },
-          },
-          status: 'approved',
-          attemptsCount: 3, // Exhausted
-          lastFailedAttemptAt: new Date(Date.now() - 3 * 3600000).toISOString(),
-          lastScore: 50,
-          passingScore: 60,
-        },
-      ]);
+      if (retakeRes.success && retakeRes.data) {
+        setRetakeEnrollments(retakeRes.data);
+      } else {
+        setRetakeEnrollments([]);
+      }
     } catch {
       setPending([]);
+      setRetakeEnrollments([]);
     } finally {
       setLoading(false);
     }

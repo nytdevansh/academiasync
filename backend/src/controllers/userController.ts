@@ -5,6 +5,19 @@ import FacultyProfile from '../models/FacultyProfile';
 import { AuthRequest } from '../middlewares/auth';
 import { logAudit } from '../services/auditService';
 
+// GET /api/v1/users/public-directory — public campus directory
+export const getPublicFacultyDirectory = async (_req: any, res: Response): Promise<void> => {
+  try {
+    const faculty = await User.find({ status: 'active', role: { $in: ['faculty_member', 'hod', 'dean', 'administrator'] } })
+      .select('name email role department')
+      .populate('department', 'name code')
+      .sort({ name: 1 });
+    res.json({ success: true, data: faculty });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
 // GET /api/v1/users — admin only
 export const getAllUsers = async (req: AuthRequest, res: Response): Promise<void> => {
   try {

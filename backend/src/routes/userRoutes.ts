@@ -1,9 +1,12 @@
 import express from 'express';
-import { getAllUsers, getUsersByDepartment, getUserById, createUser, updateUser, deleteUser, resetPassword } from '../controllers/userController';
+import { getPublicFacultyDirectory, getAllUsers, getUsersByDepartment, getUserById, createUser, updateUser, deleteUser, resetPassword } from '../controllers/userController';
 import { protect } from '../middlewares/auth';
 import { authorize } from '../middlewares/rbac';
 
 const router = express.Router();
+
+router.get('/public-directory', getPublicFacultyDirectory);
+
 router.use(protect);
 
 router.get('/', authorize('administrator'), getAllUsers);

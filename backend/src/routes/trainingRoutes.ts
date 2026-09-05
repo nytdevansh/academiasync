@@ -1,7 +1,7 @@
 import express from 'express';
 import {
   getPrograms, getProgramById, createProgram, updateProgram, deleteProgram,
-  enrollInProgram, getMyEnrollments, getPendingApprovals, getEnrollmentsByDepartment,
+  enrollInProgram, getMyEnrollments, getPendingApprovals, getRetakeCandidates, getEnrollmentsByDepartment,
   approveEnrollment, rejectEnrollment, markAttended, completeEnrollment,
   resetEnrollmentForRetake
 } from '../controllers/trainingController';
@@ -37,6 +37,7 @@ router.delete('/programs/:id', authorize('administrator'), deleteProgram);
 router.post('/programs/:id/enroll', authorize('faculty_member', 'hod'), enrollInProgram);
 router.get('/enrollments/mine', getMyEnrollments);
 router.get('/enrollments/pending-approval', authorize('hod', 'administrator'), getPendingApprovals);
+router.get('/enrollments/retake-candidates', authorize('hod', 'dean', 'administrator'), getRetakeCandidates);
 router.get('/enrollments/department/:deptId', authorize('hod', 'dean', 'administrator'), getEnrollmentsByDepartment);
 router.put('/enrollments/:id/approve', authorize('hod', 'administrator'), approveEnrollment);
 router.put('/enrollments/:id/reject', authorize('hod', 'administrator'), rejectEnrollment);

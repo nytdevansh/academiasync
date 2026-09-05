@@ -60,3 +60,8 @@ export const completeEnrollment = async (id: string, payload: any): Promise<ApiR
   const { data } = await axiosInstance.put(`/training/enrollments/${id}/complete`, payload);
   return data;
 };
+
+export const getRetakeCandidates = async (): Promise<ApiResponse<any[]>> => {
+  const { data } = await axiosInstance.get('/training/enrollments/retake-candidates');
+  return data;
+};

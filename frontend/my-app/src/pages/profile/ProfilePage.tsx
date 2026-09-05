@@ -24,60 +24,32 @@ export const ProfilePage: React.FC = () => {
       if (r.success && r.data) {
         setProfile(r.data);
       } else {
-        // Mock fallback profile
         setProfile({
-          _id: 'prof1',
-          bio: 'Senior academician and researcher specializing in Artificial Intelligence, Cloud Architectures, and Automated Educational Systems.',
-          researchAreas: ['Artificial Intelligence', 'Machine Learning', 'Cloud Distributed Computing', 'Educational Technology'],
-          profileCompleteness: 88,
-          qualifications: [
-            { degree: 'Ph.D. in Computer Science', specialization: 'Distributed Systems & Cloud Intelligence', institution: 'National Institute of Technology', year: 2018 },
-            { degree: 'M.Tech in Computer Science & Engineering', specialization: 'Software Systems', institution: 'State Technical University', year: 2013 },
-            { degree: 'B.Tech in Computer Science', specialization: 'CSE', institution: 'University College of Engineering', year: 2010 },
-          ],
-          experience: [
-            { role: 'Associate Professor', institution: 'AcademiaSync University', fromYear: 2021, isCurrent: true },
-            { role: 'Assistant Professor', institution: 'Institute of Advanced Technology', fromYear: 2018, toYear: 2021, isCurrent: false },
-          ],
-          certifications: [
-            { name: 'AWS Certified Solutions Architect – Professional', issuingBody: 'Amazon Web Services', issueDate: '2024-03-15' },
-            { name: 'AICTE Certified Outcome-Based Pedagogical Master', issuingBody: 'AICTE & NITTR', issueDate: '2023-11-20' },
-          ],
-          subjectsTaught: [
-            { _id: 's1', name: 'Design and Analysis of Algorithms', code: 'CS301', credits: 4 },
-            { _id: 's2', name: 'Artificial Intelligence & Neural Nets', code: 'CS405', credits: 4 },
-            { _id: 's3', name: 'Cloud Computing & Virtualization', code: 'CS502', credits: 3 },
-          ],
-          accomplishments: [
-            { title: 'Best Researcher & Innovation Award 2025', category: 'Award', description: 'Awarded for publishing 4 Q1 journal papers in IEEE Transactions.', date: '2025-12-10' },
-            { title: 'Funded Project: AI in Healthcare Diagnostics', category: 'Grant', description: 'Principal Investigator for DST Sponsored Seed Grant ₹15.4 Lakhs.', date: '2024-08-01' },
-          ],
+          userId: user?._id as any,
+          bio: '',
+          researchAreas: [],
+          profileCompleteness: 0,
+          qualifications: [],
+          experience: [],
+          certifications: [],
+          subjectsTaught: [],
+          accomplishments: [],
         } as any);
       }
     }).catch(() => {
       setProfile({
-        _id: 'prof1',
-        bio: 'Senior academician and researcher specializing in Artificial Intelligence, Cloud Architectures, and Automated Educational Systems.',
-        researchAreas: ['Artificial Intelligence', 'Machine Learning', 'Cloud Distributed Computing'],
-        profileCompleteness: 88,
-        qualifications: [
-          { degree: 'Ph.D. in Computer Science', specialization: 'Distributed Systems', institution: 'National Institute of Technology', year: 2018 },
-        ],
-        experience: [
-          { role: 'Associate Professor', institution: 'AcademiaSync University', fromYear: 2021, isCurrent: true },
-        ],
-        certifications: [
-          { name: 'AWS Certified Solutions Architect', issuingBody: 'Amazon Web Services', issueDate: '2024-03-15' },
-        ],
-        subjectsTaught: [
-          { _id: 's1', name: 'Design and Analysis of Algorithms', code: 'CS301', credits: 4 },
-        ],
-        accomplishments: [
-          { title: 'Best Researcher & Innovation Award 2025', category: 'Award', description: 'Awarded for IEEE publications.', date: '2025-12-10' },
-        ],
+        userId: user?._id as any,
+        bio: '',
+        researchAreas: [],
+        profileCompleteness: 0,
+        qualifications: [],
+        experience: [],
+        certifications: [],
+        subjectsTaught: [],
+        accomplishments: [],
       } as any);
     }).finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
   if (loading) return <LoadingSpinner text="Loading faculty profile..." />;
   if (!profile) return null;
@@ -91,7 +63,7 @@ export const ProfilePage: React.FC = () => {
     { id: 'accomplishments', label: 'Research & Awards' },
   ];
 
-  const dept = user?.department && typeof user.department !== 'string' ? user.department : { name: 'Computer Science & Engineering', code: 'CSE' };
+  const dept = typeof user?.department === 'object' && user?.department !== null ? (user.department as any) : null;
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -111,10 +83,12 @@ export const ProfilePage: React.FC = () => {
                   <Mail className="w-3.5 h-3.5 text-slate-400" />
                   <span>{user?.email}</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{dept?.name} ({dept?.code})</span>
-                </div>
+                {dept && (
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{dept.name} ({dept.code})</span>
+                  </div>
+                )}
               </div>
 
               {profile.bio && (
@@ -181,35 +155,43 @@ export const ProfilePage: React.FC = () => {
         {activeTab === 'qualifications' && (
           <Card className="space-y-3">
             <h3 className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100">Degrees & Qualifications</h3>
-            <div className="divide-y divide-slate-100">
-              {profile.qualifications?.map((q, i) => (
-                <div key={i} className="py-3 flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900">{q.degree} • <span className="text-blue-600">{q.specialization}</span></h4>
-                    <p className="text-[11px] text-slate-500 mt-0.5">{q.institution}</p>
+            {!profile.qualifications || profile.qualifications.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-6">No academic qualifications recorded yet.</p>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {profile.qualifications.map((q, i) => (
+                  <div key={i} className="py-3 flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">{q.degree} • <span className="text-blue-600">{q.specialization}</span></h4>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{q.institution}</p>
+                    </div>
+                    <Badge variant="teal">{q.year}</Badge>
                   </div>
-                  <Badge variant="teal">{q.year}</Badge>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
         )}
 
         {activeTab === 'experience' && (
           <Card className="space-y-3">
             <h3 className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100">Academic & Industry Experience</h3>
-            <div className="divide-y divide-slate-100">
-              {profile.experience?.map((e, i) => (
-                <div key={i} className="py-3 flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900">{e.role}</h4>
-                    <p className="text-[11px] text-slate-500 mt-0.5">{e.institution}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{e.fromYear} — {e.isCurrent ? 'Present' : e.toYear}</p>
+            {!profile.experience || profile.experience.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-6">No experience entries recorded yet.</p>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {profile.experience.map((e, i) => (
+                  <div key={i} className="py-3 flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">{e.role}</h4>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{e.institution}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{e.fromYear} — {e.isCurrent ? 'Present' : e.toYear}</p>
+                    </div>
+                    {e.isCurrent && <Badge variant="success">Current Position</Badge>}
                   </div>
-                  {e.isCurrent && <Badge variant="success">Current Position</Badge>}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
         )}
 
@@ -290,32 +272,40 @@ export const ProfilePage: React.FC = () => {
         {activeTab === 'subjects' && (
           <Card className="space-y-3">
             <h3 className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100">Subjects & Course Units Taught</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {profile.subjectsTaught?.map((s: any) => (
-                <div key={s._id} className="p-3 bg-slate-50 rounded-xl border border-slate-200/70">
-                  <div className="font-bold text-xs text-slate-900">{s.name}</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">{s.code} • {s.credits} Credits</div>
-                </div>
-              ))}
-            </div>
+            {!profile.subjectsTaught || profile.subjectsTaught.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-6">No mapped subjects or course units recorded yet.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {profile.subjectsTaught.map((s: any) => (
+                  <div key={s._id} className="p-3 bg-slate-50 rounded-xl border border-slate-200/70">
+                    <div className="font-bold text-xs text-slate-900">{s.name}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">{s.code} • {s.credits} Credits</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
         )}
 
         {activeTab === 'accomplishments' && (
           <Card className="space-y-3">
             <h3 className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100">Key Accomplishments & Grants</h3>
-            <div className="divide-y divide-slate-100">
-              {profile.accomplishments?.map((a, i) => (
-                <div key={i} className="py-3 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-slate-900">{a.title}</h4>
-                    <Badge variant="teal">{a.category}</Badge>
+            {!profile.accomplishments || profile.accomplishments.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-6">No research publications, grants, or honors recorded yet.</p>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {profile.accomplishments.map((a, i) => (
+                  <div key={i} className="py-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-slate-900">{a.title}</h4>
+                      <Badge variant="teal">{a.category}</Badge>
+                    </div>
+                    <p className="text-xs text-slate-600">{a.description}</p>
+                    <p className="text-[10px] text-slate-400">{new Date(a.date).toLocaleDateString()}</p>
                   </div>
-                  <p className="text-xs text-slate-600">{a.description}</p>
-                  <p className="text-[10px] text-slate-400">{new Date(a.date).toLocaleDateString()}</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
         )}
       </div>

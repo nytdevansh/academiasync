@@ -66,7 +66,6 @@ export const ReviewerAssessmentPage: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Failed to load department appraisals', err);
-      // Fallback demo data if empty
       setAppraisals([]);
     } finally {
       setLoading(false);
