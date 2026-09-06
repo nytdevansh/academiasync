@@ -272,7 +272,7 @@ export const UserManagementPage: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
+            <table className="w-full text-left text-xs text-slate-600 min-w-[700px]">
               <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
                 <tr>
                   <th className="py-3.5 px-5">User Profile</th>
@@ -315,7 +315,7 @@ export const UserManagementPage: React.FC = () => {
                         {u.status === 'active' ? 'Active' : 'Suspended'}
                       </Badge>
                     </td>
-                    <td className="py-3.5 px-5 text-right">
+                    <td className="py-3.5 px-5 text-right whitespace-nowrap">
                       <div className="inline-flex items-center gap-1">
                         <Button
                           variant="ghost"
@@ -737,7 +737,7 @@ export const AuditLogPage: React.FC = () => {
       ) : (
         <Card className="p-0 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
+            <table className="w-full text-left text-xs text-slate-600 min-w-[760px]">
               <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
                 <tr>
                   <th className="py-3.5 px-5">Actor</th>

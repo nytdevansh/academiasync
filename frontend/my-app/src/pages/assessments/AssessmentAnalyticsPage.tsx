@@ -364,11 +364,11 @@ export const AssessmentAnalyticsPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="relative">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-full sm:w-48">
               <input
                 type="text"
-                className="input text-xs pl-8 py-1.5 w-48"
+                className="input text-xs pl-8 py-1.5 w-full"
                 placeholder="Search respondent..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
@@ -377,7 +377,7 @@ export const AssessmentAnalyticsPage: React.FC = () => {
             </div>
 
             <select
-              className="text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 font-medium"
+              className="text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 font-medium w-full sm:w-auto"
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value as any)}
             >
@@ -395,7 +395,7 @@ export const AssessmentAnalyticsPage: React.FC = () => {
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full min-w-[700px] text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider bg-slate-50/50">
                   <th className="py-3 px-4">Respondent</th>
@@ -404,7 +404,7 @@ export const AssessmentAnalyticsPage: React.FC = () => {
                   <th className="py-3 px-4">Time Taken</th>
                   {isGraded && <th className="py-3 px-4">Score</th>}
                   <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="py-3 px-4 text-right whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -436,7 +436,7 @@ export const AssessmentAnalyticsPage: React.FC = () => {
                           {resp.status === 'reviewed' ? 'Evaluated' : 'Pending Review'}
                         </Badge>
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
                         <Button
                           variant={resp.status === 'submitted' ? 'primary' : 'outline'}
                           size="sm"
@@ -561,7 +561,7 @@ export const AssessmentAnalyticsPage: React.FC = () => {
               />
             </FormField>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-3 border-t border-slate-200">
               <Button type="button" variant="secondary" onClick={() => setGradingModalOpen(false)}>
                 Cancel
               </Button>

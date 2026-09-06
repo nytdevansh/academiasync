@@ -124,7 +124,7 @@ export const MyEnrollmentsPage: React.FC = () => {
                               }`}
                             />
                             <span
-                              className={`text-[11px] font-bold capitalize ${
+                              className={`text-[10px] sm:text-[11px] font-bold capitalize truncate block ${
                                 isThisCert && isPastOrCur
                                   ? 'text-amber-700 font-extrabold'
                                   : isPastOrCur
@@ -337,10 +337,10 @@ export const HODApprovalsPage: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200">
+      <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab('nominations')}
-          className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+          className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
             activeTab === 'nominations'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -352,7 +352,7 @@ export const HODApprovalsPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('retakes')}
-          className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+          className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
             activeTab === 'retakes'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -393,7 +393,7 @@ export const HODApprovalsPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
                       <Button
                         variant="success"
                         size="sm"
@@ -489,7 +489,7 @@ export const HODApprovalsPage: React.FC = () => {
         title="Decline Training Nomination"
         size="sm"
         footer={
-          <div className="flex items-center justify-end gap-2 w-full">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 w-full">
             <Button variant="ghost" onClick={() => setRejectModal(null)}>
               Cancel
             </Button>
@@ -517,7 +517,7 @@ export const HODApprovalsPage: React.FC = () => {
         title="Authorize Assessment Retake Reset"
         size="md"
         footer={
-          <div className="flex items-center justify-end gap-2 w-full">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 w-full">
             <Button variant="ghost" onClick={() => setResetModalEnrollment(null)}>
               Cancel
             </Button>
@@ -539,7 +539,7 @@ export const HODApprovalsPage: React.FC = () => {
               <History className="w-4 h-4 text-amber-600" />
               <span>Faculty Assessment History</span>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-amber-200/60">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-1 border-t border-amber-200/60">
               <div>
                 <span className="text-slate-500 font-medium block">Faculty:</span>
                 <strong className="text-slate-800">{resetModalEnrollment?.userId?.name}</strong>

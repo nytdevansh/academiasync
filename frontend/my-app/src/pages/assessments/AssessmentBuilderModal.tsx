@@ -409,14 +409,14 @@ export const AssessmentBuilderModal: React.FC<AssessmentBuilderModalProps> = ({
 
         {/* Question Builder */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2">
             <div>
               <h4 className="font-bold text-slate-900 text-base">Question Set ({questions.length})</h4>
               <p className="text-xs text-slate-500">
                 {isGraded ? `Total Maximum Points: ${totalPoints}` : 'Survey / Feedback Mode'}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-slate-500 mr-1 hidden sm:inline">Add Question:</span>
               <Button type="button" size="sm" variant="secondary" onClick={() => addQuestion('mcq')}>
                 + MCQ
@@ -604,11 +604,11 @@ export const AssessmentBuilderModal: React.FC<AssessmentBuilderModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between pt-4 border-t border-slate-200">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500">Publish Mode:</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-slate-200">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+            <span className="text-xs text-slate-500 whitespace-nowrap">Publish Mode:</span>
             <select
-              className="text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white font-medium text-slate-700"
+              className="text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white font-medium text-slate-700 w-full sm:w-auto"
               value={status}
               onChange={e => setStatus(e.target.value as any)}
             >
@@ -616,11 +616,11 @@ export const AssessmentBuilderModal: React.FC<AssessmentBuilderModalProps> = ({
               <option value="draft">Save as Draft (Private)</option>
             </select>
           </div>
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
+          <div className="flex items-center justify-end gap-2 w-full sm:w-auto">
+            <Button type="button" variant="secondary" onClick={onClose} disabled={saving} className="flex-1 sm:flex-none">
               Cancel
             </Button>
-            <Button type="submit" variant="primary" loading={saving}>
+            <Button type="submit" variant="primary" loading={saving} className="flex-1 sm:flex-none">
               {status === 'published' ? 'Publish Assessment' : 'Save Draft'}
             </Button>
           </div>

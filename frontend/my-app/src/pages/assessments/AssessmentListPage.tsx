@@ -188,12 +188,14 @@ export const AssessmentListPage: React.FC = () => {
 
       {/* Tabs & Search Filter Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <ControlledTabs tabs={filterTabs} active={activeTab} onChange={setActiveTab} />
+        <div className="overflow-x-auto no-scrollbar">
+          <ControlledTabs tabs={filterTabs} active={activeTab} onChange={setActiveTab} />
+        </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full md:w-auto">
           {/* Topic filter */}
           <select
-            className="text-xs border border-slate-300 rounded-lg px-2.5 py-2 bg-white text-slate-700 font-medium"
+            className="text-xs border border-slate-300 rounded-lg px-2.5 py-2 bg-white text-slate-700 font-medium w-full sm:w-auto"
             value={selectedTopic}
             onChange={e => setSelectedTopic(e.target.value)}
           >
@@ -206,10 +208,10 @@ export const AssessmentListPage: React.FC = () => {
           </select>
 
           {/* Search bar */}
-          <div className="relative">
+          <div className="relative w-full sm:w-52">
             <input
               type="text"
-              className="input text-xs pl-8 py-2 w-52"
+              className="input text-xs pl-8 py-2 w-full"
               placeholder="Search assessment..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}

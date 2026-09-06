@@ -196,7 +196,7 @@ export const FacultyDashboard: React.FC = () => {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-600">
+              <table className="w-full min-w-[760px] text-left text-xs text-slate-600">
                 <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
                   <tr>
                     <th className="py-3 px-4">Program / Skill Target</th>
@@ -406,7 +406,7 @@ export const FacultyDashboard: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
+            <table className="w-full min-w-[500px] text-left text-xs text-slate-600">
               <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
                 <tr>
                   <th className="py-3 px-4">Program Title</th>

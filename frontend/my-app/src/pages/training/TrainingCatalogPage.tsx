@@ -389,7 +389,7 @@ export const TrainingCatalogPage: React.FC = () => {
         size="lg"
         footer={
           !enrollSuccess ? (
-            <div className="flex items-center justify-between w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
               <Button
                 variant="outline"
                 size="sm"
@@ -398,14 +398,14 @@ export const TrainingCatalogPage: React.FC = () => {
                   setSelectedProgram(null);
                   if (pId) navigate(`/training/${pId}/learn`);
                 }}
-                className="flex items-center gap-1.5"
+                className="flex items-center justify-center gap-1.5 w-full sm:w-auto"
               >
                 <PlayCircle className="w-4 h-4" />
                 <span>Launch LMS &amp; Take Test</span>
               </Button>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" onClick={() => setSelectedProgram(null)}>Close</Button>
-                <Button variant="primary" loading={enrollLoading} onClick={handleEnroll}>
+              <div className="flex items-center justify-end gap-2 w-full sm:w-auto">
+                <Button variant="ghost" onClick={() => setSelectedProgram(null)} className="flex-1 sm:flex-none">Close</Button>
+                <Button variant="primary" loading={enrollLoading} onClick={handleEnroll} className="flex-1 sm:flex-none">
                   {['faculty_member', 'hod'].includes(user?.role || '') ? 'Confirm Nomination' : 'Self-Nominate for Program'}
                 </Button>
               </div>
@@ -447,7 +447,7 @@ export const TrainingCatalogPage: React.FC = () => {
               <h3 className="text-base font-bold text-slate-900">{selectedProgram.title}</h3>
               <p className="text-slate-600 leading-relaxed">{selectedProgram.description}</p>
 
-              <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
                 <div>
                   <div className="text-[11px] font-bold text-slate-400 uppercase">Duration</div>
                   <div className="font-semibold text-slate-800 mt-0.5">
@@ -627,7 +627,7 @@ export const TrainingCatalogPage: React.FC = () => {
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-700">Target Academic Departments</label>
             <p className="text-[11px] text-slate-500">Leave unselected to make available institution-wide.</p>
-            <div className="max-h-24 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-2 gap-2 text-xs">
+            <div className="max-h-24 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
               {departments.map(dept => (
                 <label key={dept._id} className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -648,7 +648,7 @@ export const TrainingCatalogPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-3 border-t border-slate-200">
             <Button type="button" variant="ghost" onClick={() => setCreateEditModal(false)}>
               Cancel
             </Button>
@@ -681,7 +681,7 @@ export const TrainingCatalogPage: React.FC = () => {
             Target Program: <strong className="text-slate-900">{deleteConfirm?.title}</strong>
           </p>
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2 border-t border-slate-200">
             <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
             <Button
               variant="primary"

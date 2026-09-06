@@ -249,10 +249,10 @@ export const CourseManageModal: React.FC<CourseManageModalProps> = ({
     >
       <div className="space-y-4 text-xs">
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-slate-200">
+        <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto no-scrollbar">
           <button
             onClick={() => setTab('modules')}
-            className={`px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               tab === 'modules' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -262,7 +262,7 @@ export const CourseManageModal: React.FC<CourseManageModalProps> = ({
 
           <button
             onClick={() => setTab('attendance')}
-            className={`px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               tab === 'attendance' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -272,7 +272,7 @@ export const CourseManageModal: React.FC<CourseManageModalProps> = ({
 
           <button
             onClick={() => setTab('assessment')}
-            className={`px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               tab === 'assessment' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -464,8 +464,8 @@ export const CourseManageModal: React.FC<CourseManageModalProps> = ({
                       No approved faculty currently enrolled in this program.
                     </div>
                   ) : (
-                    <div className="border border-slate-200 rounded-xl overflow-hidden max-h-64 overflow-y-auto">
-                      <table className="w-full text-left text-xs">
+                    <div className="border border-slate-200 rounded-xl overflow-x-auto max-h-64 overflow-y-auto">
+                      <table className="w-full min-w-[500px] text-left text-xs">
                         <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
                           <tr>
                             <th className="py-2.5 px-3">Faculty Member</th>
@@ -644,8 +644,8 @@ export const CourseManageModal: React.FC<CourseManageModalProps> = ({
                 {submissions.length > 0 && (
                   <div className="pt-4 border-t border-slate-200 space-y-2">
                     <h4 className="font-bold text-slate-800">Faculty Test Submissions ({submissions.length})</h4>
-                    <div className="border border-slate-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
-                      <table className="w-full text-left text-xs">
+                    <div className="border border-slate-200 rounded-xl overflow-x-auto max-h-48 overflow-y-auto">
+                      <table className="w-full min-w-[450px] text-left text-xs">
                         <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
                           <tr>
                             <th className="py-2.5 px-3">Faculty</th>

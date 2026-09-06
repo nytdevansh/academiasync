@@ -329,7 +329,7 @@ export const RecommendationsPage: React.FC = () => {
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[700px]">
               <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
                 <tr>
                   <th className="px-5 py-3.5">Faculty Member</th>
@@ -387,7 +387,7 @@ export const RecommendationsPage: React.FC = () => {
                         )}
                       </td>
 
-                      <td className="px-5 py-3.5 text-right">
+                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
                         {isCompleted && rec.scoreAfterCompletion == null ? (
                           <Button
                             variant="outline"

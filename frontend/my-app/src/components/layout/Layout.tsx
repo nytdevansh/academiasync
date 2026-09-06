@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
@@ -25,17 +25,23 @@ const PAGE_TITLES: Record<string, string> = {
 
 export const Layout: React.FC = () => {
   const { pathname } = useLocation();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const title = PAGE_TITLES[pathname] || 'Faculty Enhancement System';
+
+  // Automatically close mobile sidebar on route navigation
+  React.useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [pathname]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex">
-      {/* Sidebar */}
-      <Sidebar />
+      {/* Responsive Sidebar (Stationary on lg+, Slide-over drawer on mobile/tablet) */}
+      <Sidebar open={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
 
-      {/* Main Content Area */}
-      <div className="flex-1 ml-64 flex flex-col min-h-screen">
-        <TopBar title={title} />
-        <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto animate-fadeIn">
+      {/* Main Content Area: Zero left margin on mobile, 256px on lg+ */}
+      <div className="flex-1 lg:ml-64 ml-0 flex flex-col min-h-screen w-full min-w-0">
+        <TopBar title={title} onMenuClick={() => setMobileSidebarOpen(true)} />
+        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto animate-fadeIn">
           <Outlet />
         </main>
       </div>

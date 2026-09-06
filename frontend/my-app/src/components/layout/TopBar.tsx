@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, X, Check, ExternalLink, Archive, ArrowRight } from 'lucide-react';
+import { Bell, X, Check, ExternalLink, Archive, ArrowRight, Menu } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Avatar } from '../ui/Avatar';
@@ -7,7 +7,10 @@ import { Badge } from '../ui/Badge';
 import { getMyNotifications, markAllRead, markAsRead, archiveNotification } from '../../api/notifications';
 import type { Notification } from '../../types';
 
-interface TopBarProps { title: string; }
+interface TopBarProps {
+  title: string;
+  onMenuClick?: () => void;
+}
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -19,7 +22,7 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ title }) => {
+export const TopBar: React.FC<TopBarProps> = ({ title, onMenuClick }) => {
   const { user } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -78,12 +81,25 @@ export const TopBar: React.FC<TopBarProps> = ({ title }) => {
   if (!user) return null;
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 sticky top-0 z-20 flex items-center justify-between px-6 shadow-2xs">
-      <div className="flex items-center gap-3">
-        <h1 className="text-lg font-bold text-slate-900 tracking-tight">{title}</h1>
+    <header className="h-16 bg-white border-b border-slate-200 sticky top-0 z-20 flex items-center justify-between px-4 sm:px-6 shadow-2xs">
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        {/* Mobile Hamburger Menu Button */}
+        <button
+          type="button"
+          onClick={onMenuClick}
+          className="lg:hidden p-2 -ml-1 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
+          aria-label="Toggle navigation menu"
+          title="Open menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight truncate" title={title}>
+          {title}
+        </h1>
       </div>
 
-      <div className="flex items-center gap-3.5">
+      <div className="flex items-center gap-2 sm:gap-3.5 shrink-0">
         {/* Campus Website shortcut */}
         <Link
           to="/"
@@ -107,7 +123,7 @@ export const TopBar: React.FC<TopBarProps> = ({ title }) => {
           </button>
 
           {showNotif && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 overflow-hidden animate-fadeIn">
+            <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 max-w-sm bg-white rounded-2xl border border-slate-200 shadow-xl z-50 overflow-hidden animate-fadeIn">
               <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <div className="flex items-center gap-2">
                   <h4 className="font-bold text-sm text-slate-900">Notifications</h4>

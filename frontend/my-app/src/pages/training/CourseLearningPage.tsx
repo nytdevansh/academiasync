@@ -366,10 +366,10 @@ export const CourseLearningPage: React.FC = () => {
       </Card>
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200">
+      <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab('modules')}
-          className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+          className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
             activeTab === 'modules' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
@@ -379,7 +379,7 @@ export const CourseLearningPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('attendance')}
-          className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+          className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
             activeTab === 'attendance' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
@@ -389,7 +389,7 @@ export const CourseLearningPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('assessment')}
-          className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+          className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
             activeTab === 'assessment' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
@@ -525,7 +525,7 @@ export const CourseLearningPage: React.FC = () => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-600">
+              <table className="w-full min-w-[550px] text-left text-xs text-slate-600">
                 <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
                   <tr>
                     <th className="py-3 px-4">Session Date</th>

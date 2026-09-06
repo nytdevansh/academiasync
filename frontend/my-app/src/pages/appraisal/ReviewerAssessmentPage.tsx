@@ -209,7 +209,7 @@ export const ReviewerAssessmentPage: React.FC = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4 border-slate-200">
           <div className="text-xs font-medium text-slate-500">Total Submissions</div>
           <div className="text-2xl font-extrabold text-slate-900 mt-1">{appraisals.length}</div>
@@ -246,7 +246,7 @@ export const ReviewerAssessmentPage: React.FC = () => {
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[680px]">
               <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
                 <tr>
                   <th className="px-5 py-3.5">Faculty Member</th>
@@ -302,7 +302,7 @@ export const ReviewerAssessmentPage: React.FC = () => {
                         )}
                       </td>
 
-                      <td className="px-5 py-3.5 text-right">
+                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
                         <Button
                           variant={isSubmitted ? 'primary' : 'outline'}
                           size="sm"

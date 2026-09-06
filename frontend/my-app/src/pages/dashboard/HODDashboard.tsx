@@ -279,7 +279,7 @@ export const HODDashboard: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
+            <table className="w-full min-w-[760px] text-left text-xs text-slate-600">
               <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
                 <tr>
                   <th className="py-3 px-4">Faculty Member</th>
@@ -467,14 +467,14 @@ export const HODDashboard: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
+            <table className="w-full min-w-[650px] text-left text-xs text-slate-600">
               <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
                 <tr>
                   <th className="py-3 px-4">Faculty Member</th>
                   <th className="py-3 px-4">Program Title</th>
                   <th className="py-3 px-4">Type</th>
                   <th className="py-3 px-4">Nominated Date</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="py-3 px-4 text-right whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -484,7 +484,7 @@ export const HODDashboard: React.FC = () => {
                     <td className="py-3.5 px-4 max-w-xs truncate">{e.programId?.title || 'Workshop on Outcome-Based Pedagogy'}</td>
                     <td className="py-3.5 px-4"><Badge variant="info">{e.programId?.type || 'Workshop'}</Badge></td>
                     <td className="py-3.5 px-4 text-slate-500">{new Date(e.nominationDate || Date.now()).toLocaleDateString()}</td>
-                    <td className="py-3.5 px-4 text-right">
+                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="inline-flex items-center gap-2">
                         <Button
                           variant="success"

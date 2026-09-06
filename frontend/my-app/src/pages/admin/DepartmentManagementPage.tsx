@@ -249,7 +249,7 @@ export const DepartmentManagementPage: React.FC = () => {
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
+            <table className="w-full text-left text-xs text-slate-600 min-w-[650px]">
               <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
                 <tr>
                   <th className="py-3.5 px-5">Department Info</th>
@@ -302,7 +302,7 @@ export const DepartmentManagementPage: React.FC = () => {
                           {dept.isActive !== false ? 'Active' : 'Archived'}
                         </Badge>
                       </td>
-                      <td className="py-3.5 px-5 text-right">
+                      <td className="py-3.5 px-5 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-1">
                           <Button
                             variant="ghost"

@@ -216,7 +216,7 @@ export const DepartmentGapAnalysisPage: React.FC = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4 border-slate-200">
           <div className="text-xs font-medium text-slate-500">Evaluated Faculty</div>
           <div className="text-2xl font-extrabold text-slate-900 mt-1">{uniqueFaculty.length}</div>
@@ -301,7 +301,7 @@ export const DepartmentGapAnalysisPage: React.FC = () => {
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full min-w-[720px] text-left text-xs">
               <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
                 <tr>
                   <th className="px-5 py-3.5">Faculty Member</th>
@@ -310,7 +310,7 @@ export const DepartmentGapAnalysisPage: React.FC = () => {
                   <th className="px-5 py-3.5">Target Level</th>
                   <th className="px-5 py-3.5">Gap Status</th>
                   <th className="px-5 py-3.5 text-center">Trend</th>
-                  <th className="px-5 py-3.5 text-right">Action</th>
+                  <th className="px-5 py-3.5 text-right whitespace-nowrap">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -378,7 +378,7 @@ export const DepartmentGapAnalysisPage: React.FC = () => {
                         )}
                       </td>
 
-                      <td className="px-5 py-3.5 text-center">
+                      <td className="px-5 py-3.5 text-center whitespace-nowrap">
                         {record.trend === 'improving' ? (
                           <span className="inline-flex items-center gap-0.5 text-emerald-600 font-bold text-[11px]">
                             <ArrowUpRight className="w-3.5 h-3.5" /> Improving
@@ -394,7 +394,7 @@ export const DepartmentGapAnalysisPage: React.FC = () => {
                         )}
                       </td>
 
-                      <td className="px-5 py-3.5 text-right">
+                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
                         <Button
                           variant="outline"
                           size="sm"
@@ -435,7 +435,7 @@ export const DepartmentGapAnalysisPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FormField label="Assessed Proficiency Level" required>
                 <select
                   value={currentLevel}
@@ -497,7 +497,7 @@ export const DepartmentGapAnalysisPage: React.FC = () => {
               />
             </FormField>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2 border-t border-slate-200">
               <Button type="button" variant="ghost" onClick={() => setAssessModalOpen(false)}>
                 Cancel
               </Button>
