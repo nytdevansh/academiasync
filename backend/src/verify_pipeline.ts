@@ -352,7 +352,7 @@ async function runTests() {
 
     // Email delivery fallback test (must not throw when credentials are dev/mock or unverified)
     const mode = getEmailTransportMode();
-    assert(['ethereal', 'mock_logger', 'smtp', 'resend', 'sendgrid'].includes(mode), `Email transport mode is valid (${mode})`);
+    assert(['gmail_api', 'mock_logger', 'smtp', 'ethereal', 'resend', 'sendgrid'].includes(mode), `Email transport mode is valid (${mode})`);
 
     const sendRes = await sendEmail({
       to: 'faculty@institution.edu',

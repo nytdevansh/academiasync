@@ -2,29 +2,11 @@
  * emailService.ts
  *
  * Institutional Email Dispatch Service for AcademiaSync.
- * Supports:
- *  1. Production SMTP (e.g. Gmail SMTP with App Password, SendGrid, Amazon SES)
- *  2. Local Dev with Ethereal Email (auto-generates disposable test inbox & logs preview URL)
- *  3. Pre-install Fallback Mock Logger (keeps compilation & testing green if nodemailer is not yet installed)
+ * Sends emails via the official Google Gmail REST API (v1) over HTTPS (Port 443) using OAuth2.
+ * Falls back to local console logger preview when OAuth2 credentials are not set in .env.
  */
 
-import dns from 'dns';
-
-// Enforce IPv4-first lookup globally across Node.js to eliminate ENETUNREACH on IPv6 addresses
-if (typeof dns.setDefaultResultOrder === 'function') {
-  dns.setDefaultResultOrder('ipv4first');
-}
-
-// Explicit IPv4-only DNS lookup — bypasses any ambiguity in pooled-transport DNS handling
-const forceIPv4Lookup = (
-  hostname: string,
-  options: any,
-  callback: (err: NodeJS.ErrnoException | null, address: string, family: number) => void
-) => {
-  dns.lookup(hostname, { family: 4 }, (err, address, family) => {
-    callback(err, address as string, family as number);
-  });
-};
+import { google } from 'googleapis';
 
 export interface SendEmailOptions {
   to: string;
@@ -40,247 +22,96 @@ export interface SendEmailResult {
   error?: string;
 }
 
-// Dynamically load nodemailer to prevent crashes if not installed in node_modules
-let nodemailerModule: any = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  nodemailerModule = require('nodemailer');
-} catch {
-  nodemailerModule = null;
-}
+export type EmailTransportMode = 'gmail_api' | 'mock_logger';
 
-let cachedTransporter: any = null;
-let cachedTransportMode: 'smtp' | 'ethereal' | 'mock_logger' = 'mock_logger';
-let transporterInitialized = false;
-let initPromise: Promise<any> | null = null;
+export const isNodemailerInstalled = (): boolean => false;
 
-export const isNodemailerInstalled = (): boolean => Boolean(nodemailerModule);
-
-export type EmailTransportMode = 'resend' | 'sendgrid' | 'smtp' | 'ethereal' | 'mock_logger';
-
+/**
+ * Checks whether Gmail OAuth2 credentials are configured in .env.
+ */
 export const getEmailTransportMode = (): EmailTransportMode => {
-  if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim()) {
-    return 'resend';
+  const clientId = process.env.GMAIL_CLIENT_ID?.trim();
+  const clientSecret = process.env.GMAIL_CLIENT_SECRET?.trim();
+  const refreshToken = process.env.GMAIL_REFRESH_TOKEN?.trim();
+
+  if (clientId && clientSecret && refreshToken) {
+    return 'gmail_api';
   }
-  if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY.trim()) {
-    return 'sendgrid';
-  }
-  if (!nodemailerModule) return 'mock_logger';
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER || process.env.SMTP_USERNAME;
-  const pass = process.env.SMTP_PASSWORD || process.env.SMTP_PASS;
-  if (host && user && pass) {
-    return 'smtp';
-  }
-  return cachedTransportMode;
+  return 'mock_logger';
 };
 
+// Cached OAuth2 client and Gmail API instance
+let oauth2ClientInstance: any = null;
+let gmailClientInstance: any = null;
 
 /**
- * Initializes and returns an active email transporter.
- * Reuses a single pooled Transporter instance at module scope.
+ * Returns a cached Gmail API client instance authorized via OAuth2 refresh token.
  */
-const getTransporter = async (): Promise<any> => {
-  if (transporterInitialized) return cachedTransporter;
-  if (initPromise) return initPromise;
+const getGmailClient = (): any => {
+  if (gmailClientInstance) return gmailClientInstance;
 
-  initPromise = (async () => {
-    if (!nodemailerModule) {
-      cachedTransportMode = 'mock_logger';
-      transporterInitialized = true;
-      return null;
-    }
+  const clientId = process.env.GMAIL_CLIENT_ID?.trim();
+  const clientSecret = process.env.GMAIL_CLIENT_SECRET?.trim();
+  const refreshToken = process.env.GMAIL_REFRESH_TOKEN?.trim();
 
-    const host = (process.env.SMTP_HOST || '').trim();
-    const user = (process.env.SMTP_USER || process.env.SMTP_USERNAME || '').trim();
-    // Google displays app passwords with spaces (e.g. "abcd efgh ijkl mnop"). Strip any spaces automatically:
-    const rawPass = process.env.SMTP_PASSWORD || process.env.SMTP_PASS || '';
-    const pass = rawPass.replace(/\s+/g, '').trim();
-
-    // ── Tier 1: Real Production SMTP Configuration (Gmail, SendGrid, SES, etc.) ──
-    if (host && user && pass) {
-
-      cachedTransportMode = 'smtp';
-      try {
-        const port = Number(process.env.SMTP_PORT || (process.env.SMTP_SECURE === 'true' ? 465 : 587));
-        const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-
-        // Pooled connection reuse across multiple emails to eliminate repeated TLS handshakes
-        cachedTransporter = nodemailerModule.createTransport({
-          host,
-          port,
-          secure,
-          auth: { user, pass },
-          pool: true,
-          family: 4,
-          lookup: forceIPv4Lookup,
-          maxConnections: 5,
-          maxMessages: 100,
-          connectionTimeout: 15000, // 15s to accommodate Gmail TLS handshake
-          greetingTimeout: 15000,   // 15s for SMTP banner greeting
-          socketTimeout: 20000,     // 20s socket timeout
-        });
-
-
-        transporterInitialized = true;
-        console.log(`📧 [EmailService] Initialized pooled SMTP transporter on ${host}:${port} (secure: ${secure})`);
-        return cachedTransporter;
-      } catch (err: any) {
-        console.error('❌ [EmailService] Failed to create SMTP transporter:', err?.message || err);
-        cachedTransporter = null;
-        transporterInitialized = true;
-        return null;
-      }
-    }
-
-    // ── Tier 2: Local Dev Ethereal Disposable Account (1.5s discovery timeout) ──
+  if (clientId && clientSecret && refreshToken) {
     try {
-      const testAccountPromise = nodemailerModule.createTestAccount();
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Ethereal discovery timeout (1500ms)')), 1500)
+      oauth2ClientInstance = new google.auth.OAuth2(
+        clientId,
+        clientSecret,
+        process.env.GMAIL_REDIRECT_URI || 'https://developers.google.com/oauthplayground'
       );
-      const testAccount: any = await Promise.race([testAccountPromise, timeoutPromise]);
-
-      cachedTransporter = nodemailerModule.createTransport({
-        host: testAccount.smtp.host,
-        port: testAccount.smtp.port,
-        secure: testAccount.smtp.secure,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-        connectionTimeout: 8000,
-        greetingTimeout: 8000,
-        socketTimeout: 10000,
-      });
-      cachedTransportMode = 'ethereal';
-      transporterInitialized = true;
-      console.log(`📧 [EmailService] Initialized Ethereal test inbox: ${testAccount.user}`);
-      return cachedTransporter;
+      oauth2ClientInstance.setCredentials({ refresh_token: refreshToken });
+      gmailClientInstance = google.gmail({ version: 'v1', auth: oauth2ClientInstance });
+      return gmailClientInstance;
     } catch (err: any) {
-      // No SMTP configured and Ethereal unavailable -> Clean fallback to mock preview logger
-      console.log('ℹ️  [EmailService] No SMTP configured in .env (offline/local dev mode), active channel: Console Preview Logger');
-      cachedTransportMode = 'mock_logger';
-      cachedTransporter = null;
-      transporterInitialized = true;
+      console.error('❌ [EmailService] Failed to initialize Gmail OAuth2 client:', err?.message || err);
       return null;
     }
-  })();
+  }
 
-  return initPromise;
+  return null;
 };
 
 /**
- * Dispatches an email via Resend's REST API over HTTPS (Port 443).
- * Compatible with all cloud hosts (Render, Vercel, Railway) that block raw SMTP ports.
+ * Builds an RFC 2822 email string with UTF-8 support and encodes it as base64url.
  */
-const sendViaResendHttp = async ({
-  to,
-  subject,
-  html,
-  text,
+const createRawEmail = ({
   from,
-}: SendEmailOptions & { from: string }): Promise<SendEmailResult> => {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!apiKey) {
-    return { success: false, error: 'RESEND_API_KEY is not configured in .env' };
-  }
-
-  // Resend requires a verified domain or its default onboarding sender for testing:
-  // Public webmail providers (@gmail.com, @yahoo.com, etc.) cannot be verified on Resend and will be rejected.
-  const isPublicWebmail = /@(gmail|yahoo|hotmail|outlook|live|icloud)\.com/i.test(from);
-  const resendFrom = process.env.RESEND_FROM || (isPublicWebmail ? 'AcademiaSync <onboarding@resend.dev>' : from);
-  const replyTo = process.env.EMAIL_FROM_ADDRESS || (isPublicWebmail ? from.match(/<([^>]+)>/)?.[1] : undefined);
-
-  try {
-    console.log(`📧 [EmailService:Resend] Dispatching to "${to}" via HTTPS API (Port 443)...`);
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: resendFrom,
-        to: [to],
-        subject,
-        html,
-        text: text || html.replace(/<[^>]+>/g, ''),
-        ...(replyTo ? { reply_to: replyTo } : {}),
-      }),
-    });
-
-    const data: any = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      const errorMsg = data?.message || `Resend API error (${response.status} ${response.statusText})`;
-      console.error(`❌ [EmailService:Resend Error] Delivery failed to "${to}":`, errorMsg);
-      return { success: false, error: errorMsg };
-    }
-
-    console.log(`✅ [Email Sent Successfully via Resend HTTPS] "${subject}" -> ${to} (id: ${data?.id})`);
-    return {
-      success: true,
-      messageId: data?.id,
-    };
-  } catch (err: any) {
-    console.error(`❌ [EmailService:Resend Network Error] Failed to reach Resend API for "${to}":`, err?.message || err);
-    return { success: false, error: err?.message || 'Resend HTTP request failed' };
-  }
-};
-
-/**
- * Dispatches an email via SendGrid's v3 Mail Send REST API over HTTPS (Port 443).
- */
-const sendViaSendgridHttp = async ({
   to,
   subject,
   html,
-  text,
-  fromName,
-  fromAddress,
-}: SendEmailOptions & { fromName: string; fromAddress: string }): Promise<SendEmailResult> => {
-  const apiKey = process.env.SENDGRID_API_KEY?.trim();
-  if (!apiKey) {
-    return { success: false, error: 'SENDGRID_API_KEY is not configured in .env' };
-  }
+}: {
+  from: string;
+  to: string;
+  subject: string;
+  html: string;
+}): string => {
+  // UTF-8 MIME encoding for Subject to support emojis, accents, and special characters
+  const encodedSubject = `=?UTF-8?B?${Buffer.from(subject, 'utf-8').toString('base64')}?=`;
 
-  try {
-    console.log(`📧 [EmailService:SendGrid] Dispatching to "${to}" via HTTPS API (Port 443)...`);
-    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        personalizations: [{ to: [{ email: to }] }],
-        from: { email: fromAddress, name: fromName },
-        subject,
-        content: [
-          { type: 'text/html', value: html },
-          ...(text ? [{ type: 'text/plain', value: text }] : []),
-        ],
-      }),
-    });
+  const headers = [
+    `From: ${from}`,
+    `To: ${to}`,
+    `Subject: ${encodedSubject}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/html; charset=utf-8',
+    'Content-Transfer-Encoding: 7bit',
+  ];
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => '');
-      console.error(`❌ [EmailService:SendGrid Error] Delivery failed to "${to}":`, errorText);
-      return { success: false, error: errorText || `SendGrid error (${response.status})` };
-    }
+  const rawMessage = `${headers.join('\r\n')}\r\n\r\n${html}`;
 
-    console.log(`✅ [Email Sent Successfully via SendGrid HTTPS] "${subject}" -> ${to}`);
-    return { success: true, messageId: `sg-${Date.now()}` };
-  } catch (err: any) {
-    console.error(`❌ [EmailService:SendGrid Network Error] Failed to reach SendGrid API for "${to}":`, err?.message || err);
-    return { success: false, error: err?.message || 'SendGrid HTTP request failed' };
-  }
+  // Base64URL-encode (standard base64, with '+' -> '-', '/' -> '_', and stripped '=')
+  return Buffer.from(rawMessage, 'utf-8')
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 };
 
 /**
  * Dispatch an email to a single recipient.
- * Routes automatically through Resend (HTTPS), SendGrid (HTTPS), SMTP, or Local Dev Logger.
+ * Routes through Google Gmail API over HTTPS (Port 443), or falls back to local dev preview logger.
  */
 export const sendEmail = async ({
   to,
@@ -294,38 +125,15 @@ export const sendEmail = async ({
     }
 
     const fromName = process.env.EMAIL_FROM_NAME || 'AcademiaSync Portal';
-    const fromAddress = process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER || 'onboarding@resend.dev';
-    const from = `"${fromName}" <${fromAddress}>`;
+    const fromAddress = process.env.EMAIL_FROM_ADDRESS || process.env.GMAIL_USER || 'me';
+    const from = fromAddress.includes('@') ? `"${fromName}" <${fromAddress}>` : fromAddress;
 
-    const mode = getEmailTransportMode();
+    const gmail = getGmailClient();
 
-    // ── Tier 1: Resend REST API over HTTPS (Port 443) ──
-    if (mode === 'resend') {
-      return await sendViaResendHttp({ to, subject, html, text, from });
-    }
-
-    // ── Tier 2: SendGrid REST API over HTTPS (Port 443) ──
-    if (mode === 'sendgrid') {
-      return await sendViaSendgridHttp({ to, subject, html, text, fromName, fromAddress });
-    }
-
-    // ── Tier 3: SMTP (Local dev or unblocked servers) ──
-    const transporter = await getTransporter();
-
-    // Case A: Real SMTP was configured but transporter could not be initialized
-    if (!transporter && cachedTransportMode === 'smtp') {
-      const err = 'SMTP host was configured, but connection could not be established. Note: Render blocks outbound SMTP ports 25, 465, and 587. To send emails from Render, add RESEND_API_KEY to your environment variables.';
-      console.error(`❌ [EmailService] Delivery aborted to "${to}": ${err}`);
-      return {
-        success: false,
-        error: err,
-      };
-    }
-
-    // Case B: No SMTP or API Key Configured (Local Dev / Offline Mock Logger)
-    if (!transporter && cachedTransportMode === 'mock_logger') {
+    // ── Dev / Fallback Mode (When OAuth2 credentials are not configured) ──
+    if (!gmail) {
       console.log('\n' + '─'.repeat(70));
-      console.log('📧 [Console Email Preview] (Local Dev / No RESEND_API_KEY or SMTP Configured in .env)');
+      console.log('📧 [Console Email Preview] (Local Dev / Gmail OAuth2 Not Configured in .env)');
       console.log(`   To:      ${to}`);
       console.log(`   From:    ${from}`);
       console.log(`   Subject: ${subject}`);
@@ -339,91 +147,53 @@ export const sendEmail = async ({
       };
     }
 
+    // ── Production Mode (Google Gmail API v1 over HTTPS Port 443) ──
+    console.log(`📧 [EmailService:Gmail API] Dispatching email to "${to}" via Gmail API...`);
+    const encodedRaw = createRawEmail({ from, to, subject, html });
 
-    // ── Case C: Active SMTP / Ethereal Transporter Delivery ──
-    try {
-      console.log(`📧 [EmailService] Initiating dispatch to "${to}" via ${cachedTransportMode}...`);
-      const sendPromise = transporter.sendMail({
-        from,
-        to,
-        subject,
-        html,
-        text: text || html.replace(/<[^>]+>/g, ''),
-      });
+    const response = await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: {
+        raw: encodedRaw,
+      },
+    });
 
-      // 25-second safeguard timeout for slow Gmail handshakes
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('SMTP sendMail timed out after 25000ms. Gmail connection or auth was cut off.')), 25000)
-      );
+    const messageId = response.data?.id || undefined;
+    console.log(`✅ [Email Sent Successfully via Gmail API] "${subject}" -> ${to} (id: ${messageId})`);
 
-      const info: any = await Promise.race([sendPromise, timeoutPromise]);
-
-      let previewUrl: string | undefined;
-      if (cachedTransportMode === 'ethereal' && nodemailerModule?.getTestMessageUrl) {
-        previewUrl = nodemailerModule.getTestMessageUrl(info) || undefined;
-        if (previewUrl) {
-          console.log(`📧 [Ethereal Preview URL] ${subject} -> ${previewUrl}`);
-        }
-      } else {
-        console.log(`✅ [Email Sent Successfully] "${subject}" -> ${to} (id: ${info.messageId})`);
-      }
-
-      return {
-        success: true,
-        messageId: info.messageId,
-        previewUrl,
-      };
-    } catch (deliveryErr: any) {
-      // When real SMTP is configured, do NOT silently swallow errors! Surface the real failure!
-      const errorMsg = deliveryErr?.message || 'SMTP delivery failed';
-      console.error(`❌ [EmailService Error] Real SMTP delivery failed for "${to}":`, errorMsg);
-
-      // Reset pool on network/socket connection errors to prevent dead socket inheritance
-      const isConnectionError =
-        deliveryErr?.code === 'ENETUNREACH' ||
-        deliveryErr?.code === 'ETIMEDOUT' ||
-        deliveryErr?.code === 'ECONNREFUSED' ||
-        deliveryErr?.code === 'ECONNRESET' ||
-        deliveryErr?.code === 'ESOCKET' ||
-        (typeof errorMsg === 'string' && (errorMsg.includes('timed out') || errorMsg.includes('ENETUNREACH') || errorMsg.includes('Connection timeout')));
-
-      if (isConnectionError) {
-        console.warn(`⚠️  [EmailService] Network/socket failure detected (${deliveryErr?.code || 'timeout'}). Resetting pooled transporter.`);
-        try { cachedTransporter?.close?.(); } catch {}
-        cachedTransporter = null;
-        transporterInitialized = false;
-        initPromise = null;
-      }
-
-      return {
-        success: false,
-        error: errorMsg,
-      };
-    }
+    return {
+      success: true,
+      messageId,
+    };
   } catch (err: any) {
-    console.error(`❌ [EmailService Unexpected Error] Failed to process email "${subject}" to "${to}":`, err?.message || err);
+    const errorMsg =
+      err?.response?.data?.error?.message || err?.message || 'Gmail API request failed';
+    console.error(`❌ [EmailService:Gmail API Error] Delivery failed to "${to}":`, errorMsg);
     return {
       success: false,
-      error: err?.message || 'Email delivery failed',
+      error: errorMsg,
     };
   }
 };
 
 /**
- * Diagnostic utility to verify SMTP connectivity and credentials.
+ * Diagnostic utility to verify Gmail API credentials and authentication.
  */
 export const verifySmtpConnection = async (): Promise<{ success: boolean; mode: string; error?: string }> => {
+  const mode = getEmailTransportMode();
+  if (mode === 'mock_logger') {
+    return { success: true, mode: 'mock_logger' };
+  }
+
   try {
-    const transporter = await getTransporter();
-    if (!transporter) {
-      return { success: true, mode: cachedTransportMode };
+    const gmail = getGmailClient();
+    if (!gmail) {
+      return { success: false, mode: 'gmail_api', error: 'Gmail OAuth2 client could not be initialized' };
     }
-    await transporter.verify();
-    return { success: true, mode: cachedTransportMode };
+    await gmail.users.getProfile({ userId: 'me' });
+    return { success: true, mode: 'gmail_api' };
   } catch (err: any) {
-    return { success: false, mode: cachedTransportMode, error: err?.message || String(err) };
+    const errorMsg = err?.response?.data?.error?.message || err?.message || String(err);
+    return { success: false, mode: 'gmail_api', error: errorMsg };
   }
 };
-
-
-
