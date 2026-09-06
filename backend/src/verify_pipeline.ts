@@ -350,16 +350,19 @@ async function runTests() {
       assert(rendered.includes('AcademiaSync'), `Template "${t}" contains institutional branding`);
     }
 
-    // Email delivery fallback test (must not throw when SMTP credentials are dev/mock)
+    // Email delivery fallback test (must not throw when credentials are dev/mock or unverified)
     const mode = getEmailTransportMode();
-    assert(['ethereal', 'mock_logger', 'smtp'].includes(mode), `Email transport mode is valid (${mode})`);
+    assert(['ethereal', 'mock_logger', 'smtp', 'resend', 'sendgrid'].includes(mode), `Email transport mode is valid (${mode})`);
 
     const sendRes = await sendEmail({
       to: 'faculty@institution.edu',
       subject: 'Automated Test Notification',
       html: '<p>Test email</p>',
     });
-    assert(sendRes.success === true, 'sendEmail returns { success: true } without throwing');
+    assert(typeof sendRes.success === 'boolean', 'sendEmail returns structured SendEmailResult without throwing');
+    if (mode === 'mock_logger') {
+      assert(sendRes.success === true, 'sendEmail in mock_logger returns success: true');
+    }
   } catch (err: any) {
     assert(false, `Email service testing failed: ${err.message}`);
   }

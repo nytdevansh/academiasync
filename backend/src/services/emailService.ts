@@ -187,7 +187,10 @@ const sendViaResendHttp = async ({
   }
 
   // Resend requires a verified domain or its default onboarding sender for testing:
-  const resendFrom = process.env.RESEND_FROM || (from.includes('@') ? from : 'AcademiaSync <onboarding@resend.dev>');
+  // Public webmail providers (@gmail.com, @yahoo.com, etc.) cannot be verified on Resend and will be rejected.
+  const isPublicWebmail = /@(gmail|yahoo|hotmail|outlook|live|icloud)\.com/i.test(from);
+  const resendFrom = process.env.RESEND_FROM || (isPublicWebmail ? 'AcademiaSync <onboarding@resend.dev>' : from);
+  const replyTo = process.env.EMAIL_FROM_ADDRESS || (isPublicWebmail ? from.match(/<([^>]+)>/)?.[1] : undefined);
 
   try {
     console.log(`📧 [EmailService:Resend] Dispatching to "${to}" via HTTPS API (Port 443)...`);
@@ -203,6 +206,7 @@ const sendViaResendHttp = async ({
         subject,
         html,
         text: text || html.replace(/<[^>]+>/g, ''),
+        ...(replyTo ? { reply_to: replyTo } : {}),
       }),
     });
 

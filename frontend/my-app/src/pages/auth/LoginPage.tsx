@@ -204,8 +204,13 @@ export const LoginPage: React.FC = () => {
               </Button>
             </form>
 
-            <div className="pt-4 border-t border-slate-100 text-center text-[11px] text-slate-400">
-              AcademiaSync FES • Secure University Role-Based Access Control
+            <div className="pt-4 border-t border-slate-100 text-center text-[11px] text-slate-400 space-y-1.5">
+              <div>AcademiaSync FES • Secure University Role-Based Access Control</div>
+              <div className="text-slate-500 flex items-center justify-center gap-2">
+                <Link to="/privacy" className="hover:text-blue-600 hover:underline">Privacy Policy</Link>
+                <span>•</span>
+                <Link to="/terms" className="hover:text-blue-600 hover:underline">Terms of Service</Link>
+              </div>
             </div>
           </div>
         </div>

@@ -13,6 +13,8 @@ import { StudentsPage } from './pages/public/StudentsPage';
 import { DepartmentsPage } from './pages/public/DepartmentsPage';
 import { NoticesPage } from './pages/public/NoticesPage';
 import { ContactPage } from './pages/public/ContactPage';
+import { PrivacyPolicyPage } from './pages/public/PrivacyPolicyPage';
+import { TermsOfServicePage } from './pages/public/TermsOfServicePage';
 import { CertificateVerificationPage } from './pages/public/CertificateVerificationPage';
 import { LoginPage } from './pages/auth/LoginPage';
 
@@ -55,6 +57,8 @@ const App: React.FC = () => (
           <Route path="/departments" element={<DepartmentsPage />} />
           <Route path="/notices" element={<NoticesPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
         </Route>
 
         {/* Public Cryptographic Certificate Verification */}

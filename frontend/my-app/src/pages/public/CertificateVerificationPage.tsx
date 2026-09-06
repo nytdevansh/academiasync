@@ -179,7 +179,10 @@ export const CertificateVerificationPage: React.FC = () => {
             <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200/60 text-[11px] text-blue-950 flex items-start gap-2.5">
               <Lock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
               <div className="leading-relaxed">
-                <strong>Institutional Privacy Notice:</strong> Numerical assessment scores, percentage marks, and individual answer sheets are strictly confidential faculty records and intentionally excluded from public badges.
+                <strong>Institutional Privacy Notice:</strong> Numerical assessment scores, percentage marks, and individual answer sheets are strictly confidential faculty records and intentionally excluded from public badges.{' '}
+                <Link to="/privacy" className="text-blue-700 underline font-semibold hover:text-blue-900">
+                  Read our Privacy Policy &rarr;
+                </Link>
               </div>
             </div>
 
