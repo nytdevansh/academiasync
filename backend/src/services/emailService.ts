@@ -15,6 +15,17 @@ if (typeof dns.setDefaultResultOrder === 'function') {
   dns.setDefaultResultOrder('ipv4first');
 }
 
+// Explicit IPv4-only DNS lookup — bypasses any ambiguity in pooled-transport DNS handling
+const forceIPv4Lookup = (
+  hostname: string,
+  options: any,
+  callback: (err: NodeJS.ErrnoException | null, address: string, family: number) => void
+) => {
+  dns.lookup(hostname, { family: 4 }, (err, address, family) => {
+    callback(err, address as string, family as number);
+  });
+};
+
 export interface SendEmailOptions {
   to: string;
   subject: string;
@@ -37,7 +48,6 @@ try {
 } catch {
   nodemailerModule = null;
 }
-
 
 let cachedTransporter: any = null;
 let cachedTransportMode: 'smtp' | 'ethereal' | 'mock_logger' = 'mock_logger';
@@ -94,12 +104,14 @@ const getTransporter = async (): Promise<any> => {
           auth: { user, pass },
           pool: true,
           family: 4,
+          lookup: forceIPv4Lookup,
           maxConnections: 5,
           maxMessages: 100,
           connectionTimeout: 15000, // 15s to accommodate Gmail TLS handshake
           greetingTimeout: 15000,   // 15s for SMTP banner greeting
           socketTimeout: 20000,     // 20s socket timeout
         });
+
 
         transporterInitialized = true;
         console.log(`📧 [EmailService] Initialized pooled SMTP transporter on ${host}:${port} (secure: ${secure})`);
