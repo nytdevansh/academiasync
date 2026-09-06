@@ -2,6 +2,7 @@ import { Response } from 'express';
 import bcrypt from 'bcryptjs';
 import User from '../models/User';
 import FacultyProfile from '../models/FacultyProfile';
+import Department from '../models/Department';
 import { AuthRequest } from '../middlewares/auth';
 import { logAudit } from '../services/auditService';
 
@@ -97,6 +98,22 @@ export const updateUser = async (req: AuthRequest, res: Response): Promise<void>
 
     const { name, role, department, status } = req.body;
     const updated = await User.findByIdAndUpdate(req.params.id, { name, role, department, status }, { new: true }).select('-passwordHash').populate('department', 'name code');
+
+    // ── Sync Department.hodRef ─────────────────────────────────────────────
+    // If this user was previously an HOD of a department, clear that department's hodRef
+    if (prev.role === 'hod' && prev.department) {
+      const prevDeptId = prev.department.toString();
+      const newDeptId = department ? department.toString() : '';
+      // Clear if they changed department OR are no longer HOD
+      if (role !== 'hod' || prevDeptId !== newDeptId) {
+        await Department.findByIdAndUpdate(prevDeptId, { $unset: { hodRef: '' } });
+      }
+    }
+    // If they are now HOD of a department, set that department's hodRef
+    if (role === 'hod' && department) {
+      await Department.findByIdAndUpdate(department, { hodRef: req.params.id });
+    }
+    // ──────────────────────────────────────────────────────────────────────
 
     await logAudit(req.user?._id, 'update', 'User', req.params.id, `Updated user`, prev.toObject(), updated?.toObject(), req.ip, req.headers['user-agent']);
     res.json({ success: true, data: updated });

@@ -28,6 +28,7 @@ import auditRoutes from './routes/auditRoutes';
 import recommendationRoutes from './routes/recommendationRoutes';
 import assessmentRoutes from './routes/assessmentRoutes';
 import certificateRoutes from './routes/certificateRoutes';
+import noticeRoutes from './routes/noticeRoutes';
 import { startComplianceJobs } from './jobs/complianceAlerts';
 import { startCertificateExpiryScheduler } from './jobs/certificateExpiryReminder.job';
 
@@ -115,6 +116,7 @@ app.use(`${API}/audit`, auditRoutes);
 app.use(`${API}/recommendations`, recommendationRoutes);
 app.use(`${API}/assessments`, assessmentRoutes);
 app.use(`${API}/certificates`, certificateRoutes);
+app.use(`${API}/notices`, noticeRoutes);
 
 // 404 handler
 app.use((_req, res) => res.status(404).json({ success: false, error: 'Route not found' }));

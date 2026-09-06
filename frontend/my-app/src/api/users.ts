@@ -6,6 +6,12 @@ export const getAllUsers = async (params?: any): Promise<ApiResponse<User[]>> =>
   return data;
 };
 
+export const getUsersByDepartment = async (deptId: string): Promise<ApiResponse<User[]>> => {
+  const { data } = await axiosInstance.get(`/users/department/${deptId}`);
+  return data;
+};
+
+
 export const getPublicFacultyDirectory = async (): Promise<ApiResponse<User[]>> => {
   const { data } = await axiosInstance.get('/users/public-directory');
   return data;

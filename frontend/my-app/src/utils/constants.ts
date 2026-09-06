@@ -118,6 +118,8 @@ export const NAV_SECTIONS = {
       { path: '/dashboard', icon: 'LayoutDashboard', label: 'Dashboard' },
       { path: '/profile', icon: 'UserCircle', label: 'My Profile' },
       { path: '/certificates', icon: 'Award', label: 'My Credentials' },
+      { path: '/competency', icon: 'BarChart2', label: 'My Competency' },
+      { path: '/appraisals', icon: 'ClipboardList', label: 'My Appraisal' },
     ]},
     { label: 'Department', items: [
       { path: '/assessments', icon: 'CheckSquare', label: 'Dept. Assessments' },
@@ -138,15 +140,17 @@ export const NAV_SECTIONS = {
       { path: '/dashboard', icon: 'LayoutDashboard', label: 'Dashboard' },
       { path: '/profile', icon: 'UserCircle', label: 'My Profile' },
       { path: '/certificates', icon: 'Award', label: 'My Credentials' },
+      { path: '/appraisals', icon: 'ClipboardList', label: 'My Appraisal' },
     ]},
     { label: 'Institution', items: [
       { path: '/assessments', icon: 'CheckSquare', label: 'Assessments & Surveys' },
       { path: '/training/catalog', icon: 'GraduationCap', label: 'Training Programs' },
+      { path: '/training/approvals', icon: 'CheckSquare', label: 'Training Approvals' },
       { path: '/training/grading', icon: 'CheckSquare', label: 'Course Grading' },
       { path: '/curriculum/subjects', icon: 'BookOpen', label: 'Curriculum Subjects' },
       { path: '/recommendations', icon: 'Sparkles', label: 'Recommendations' },
       { path: '/competency/gap-analysis', icon: 'TrendingUp', label: 'Competency Analysis' },
-      { path: '/appraisals/department', icon: 'ClipboardList', label: 'Appraisals' },
+      { path: '/appraisals/department', icon: 'ClipboardList', label: 'Reviewer Appraisals' },
     ]},
     { label: 'Analytics', items: [
       { path: '/reports', icon: 'BarChart2', label: 'Reports & Analytics' },
@@ -155,6 +159,7 @@ export const NAV_SECTIONS = {
   hr: [
     { label: 'Main', items: [
       { path: '/dashboard', icon: 'LayoutDashboard', label: 'Dashboard' },
+      { path: '/profile', icon: 'UserCircle', label: 'My Profile' },
       { path: '/certificates', icon: 'Award', label: 'My Credentials' },
       { path: '/assessments', icon: 'CheckSquare', label: 'Surveys & Feedback' },
       { path: '/reports', icon: 'BarChart2', label: 'Reports' },
@@ -163,6 +168,7 @@ export const NAV_SECTIONS = {
   administrator: [
     { label: 'Main', items: [
       { path: '/dashboard', icon: 'LayoutDashboard', label: 'Dashboard' },
+      { path: '/profile', icon: 'UserCircle', label: 'My Profile' },
       { path: '/certificates', icon: 'Award', label: 'My Credentials' },
     ]},
     { label: 'Management', items: [
@@ -175,6 +181,7 @@ export const NAV_SECTIONS = {
       { path: '/training/grading', icon: 'CheckSquare', label: 'Course Grading' },
       { path: '/recommendations', icon: 'Sparkles', label: 'Recommendations' },
       { path: '/appraisals/cycles', icon: 'ClipboardList', label: 'Appraisal Cycles' },
+      { path: '/appraisals/department', icon: 'ClipboardList', label: 'Reviewer Appraisals' },
       { path: '/competency/gap-analysis', icon: 'TrendingUp', label: 'Competency' },
     ]},
     { label: 'Analytics & Audit', items: [

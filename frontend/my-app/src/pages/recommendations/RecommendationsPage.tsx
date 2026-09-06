@@ -18,7 +18,7 @@ import {
   type TrainingRecommendation, type ComplianceStats
 } from '../../api/recommendations';
 import { getAllDepartments } from '../../api/departments';
-import { getAllUsers } from '../../api/users';
+import { getAllUsers, getUsersByDepartment } from '../../api/users';
 import { getPrograms } from '../../api/training';
 import { useAuth } from '../../context/AuthContext';
 import type { Department, User, TrainingProgram } from '../../types';
@@ -55,9 +55,10 @@ export const RecommendationsPage: React.FC = () => {
   const [assessing, setAssessing] = useState(false);
   const [assessError, setAssessError] = useState<string | null>(null);
 
+  // Initial load: departments + programs
   useEffect(() => {
-    Promise.all([getAllDepartments(), getAllUsers(), getPrograms()])
-      .then(([deptRes, userRes, progRes]) => {
+    Promise.all([getAllDepartments(), getPrograms()])
+      .then(([deptRes, progRes]) => {
         if (deptRes.success && deptRes.data) {
           setDepartments(deptRes.data);
           if (user?.department) {
@@ -67,15 +68,37 @@ export const RecommendationsPage: React.FC = () => {
             setSelectedDeptId(deptRes.data[0]._id);
           }
         }
-        if (userRes.success && userRes.data) {
-          setFacultyUsers(userRes.data.filter((u: any) => ['faculty_member', 'hod'].includes(u.role)));
-        }
         if (progRes.success && progRes.data) {
           setPrograms(progRes.data);
         }
       })
       .catch(console.error);
   }, [user]);
+
+  // Fetch faculty list whenever selected department changes.
+  // Admin uses GET /users (admin-only) filtered by dept.
+  // HOD/Dean use GET /users/department/:id (scoped endpoint) to avoid 403.
+  useEffect(() => {
+    if (!selectedDeptId) return;
+    const fetchFaculty = async () => {
+      try {
+        if (user?.role === 'administrator') {
+          const res = await getAllUsers({ department: selectedDeptId, limit: 200 });
+          if (res.success && res.data) {
+            setFacultyUsers(res.data.filter((u: any) => ['faculty_member', 'hod'].includes(u.role)));
+          }
+        } else {
+          const res = await getUsersByDepartment(selectedDeptId);
+          if (res.success && res.data) {
+            setFacultyUsers(res.data.filter((u: any) => ['faculty_member', 'hod'].includes(u.role)));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load faculty list', err);
+      }
+    };
+    fetchFaculty();
+  }, [selectedDeptId, user?.role]);
 
   const loadDeptData = async (deptId: string) => {
     if (!deptId) return;

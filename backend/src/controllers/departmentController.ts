@@ -28,8 +28,9 @@ export const createDepartment = async (req: AuthRequest, res: Response): Promise
     const exists = await Department.findOne({ code });
     if (exists) { res.status(400).json({ success: false, error: 'Department code already exists' }); return; }
     const dept = await Department.create({ name, code, hodRef, description });
+    const populated = await Department.findById(dept._id).populate('hodRef', 'name email');
     await logAudit(req.user?._id, 'create', 'Department', dept._id, `Created department ${name}`, null, dept, req.ip, req.headers['user-agent']);
-    res.status(201).json({ success: true, data: dept });
+    res.status(201).json({ success: true, data: populated });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -38,7 +39,7 @@ export const createDepartment = async (req: AuthRequest, res: Response): Promise
 export const updateDepartment = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const prev = await Department.findById(req.params.id);
-    const dept = await Department.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const dept = await Department.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('hodRef', 'name email');
     if (!dept) { res.status(404).json({ success: false, error: 'Department not found' }); return; }
     await logAudit(req.user?._id, 'update', 'Department', req.params.id, `Updated department`, prev, dept, req.ip, req.headers['user-agent']);
     res.json({ success: true, data: dept });
