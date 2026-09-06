@@ -37,53 +37,53 @@ export const createRecommendation = async (req: AuthRequest, res: Response): Pro
       if (prog?.title) programTitle = prog.title;
     }
 
-    const createdRecs = [];
+    const createdRecs = await Promise.all(
+      targetIds.map(async (fId) => {
+        let scoreBeforeRecommendation: number | undefined;
+        if (skillAreaId) {
+          const cr = await CompetencyRecord.findOne({ userId: fId, skillArea: skillAreaId });
+          scoreBeforeRecommendation = cr?.currentScore;
+        }
 
-    for (const fId of targetIds) {
-      // Snapshot the current competency score for this skill (before delta)
-      let scoreBeforeRecommendation: number | undefined;
-      if (skillAreaId) {
-        const cr = await CompetencyRecord.findOne({ userId: fId, skillArea: skillAreaId });
-        scoreBeforeRecommendation = cr?.currentScore;
-      }
+        const rec = await TrainingRecommendation.create({
+          facultyId: fId,
+          programId,
+          skillAreaId,
+          recommendedBy: req.user?._id,
+          reason,
+          dueDate,
+          notes,
+          scoreBeforeRecommendation,
+        });
 
-      const rec = await TrainingRecommendation.create({
-        facultyId: fId,
-        programId,
-        skillAreaId,
-        recommendedBy: req.user?._id,
-        reason,
-        dueDate,
-        notes,
-        scoreBeforeRecommendation,
-      });
+        // Dispatch in-app notification and optional email via unified notify service
+        await notify({
+          userId: fId,
+          type: 'training',
+          title: 'New Training Recommended',
+          message: `${req.user?.name} has recommended "${programTitle}" for you. Reason: ${reason}. Due: ${new Date(dueDate).toLocaleDateString()}.`,
+          dueDate,
+          relatedEntityType: 'TrainingRecommendation',
+          relatedEntityId: rec._id,
+          channels: shouldSendEmail ? ['in_app', 'email'] : ['in_app'],
+          emailData: shouldSendEmail ? {
+            template: 'nominationReceived',
+            subject: `Training Recommended: ${programTitle}`,
+            variables: {
+              courseTitle: programTitle,
+              facultyName: 'Faculty Colleague',
+              programType: 'Recommended Training',
+              startDate: new Date(dueDate).toLocaleDateString(),
+              actionUrl: `${process.env.APP_URL || 'http://localhost:5173'}/recommendations`,
+              year: new Date().getFullYear(),
+            },
+          } : undefined,
+        });
 
-      // Dispatch in-app notification and optional email via unified notify service
-      await notify({
-        userId: fId,
-        type: 'training',
-        title: 'New Training Recommended',
-        message: `${req.user?.name} has recommended "${programTitle}" for you. Reason: ${reason}. Due: ${new Date(dueDate).toLocaleDateString()}.`,
-        dueDate,
-        relatedEntityType: 'TrainingRecommendation',
-        relatedEntityId: rec._id,
-        channels: shouldSendEmail ? ['in_app', 'email'] : ['in_app'],
-        emailData: shouldSendEmail ? {
-          template: 'nominationReceived',
-          subject: `Training Recommended: ${programTitle}`,
-          variables: {
-            courseTitle: programTitle,
-            facultyName: 'Faculty Colleague',
-            programType: 'Recommended Training',
-            startDate: new Date(dueDate).toLocaleDateString(),
-            actionUrl: `${process.env.APP_URL || 'http://localhost:5173'}/recommendations`,
-            year: new Date().getFullYear(),
-          },
-        } : undefined,
-      });
+        return rec;
+      })
+    );
 
-      createdRecs.push(rec);
-    }
 
 
     await logAudit(req.user?._id, 'create', 'TrainingRecommendation', createdRecs[0]?._id,
