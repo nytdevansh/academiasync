@@ -39,6 +39,7 @@ import { AssessmentAnalyticsPage } from './pages/assessments/AssessmentAnalytics
 import { ReportsPage } from './pages/reports/ReportsPage';
 import { UserManagementPage, AuditLogPage } from './pages/admin/AdminPages';
 import { DepartmentManagementPage } from './pages/admin/DepartmentManagementPage';
+import { NotificationsPage } from './pages/notifications/NotificationsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 const App: React.FC = () => (
@@ -67,6 +68,7 @@ const App: React.FC = () => (
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/edit" element={<EditProfilePage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/certificates" element={<MyCertificatesPage />} />
 
           <Route path="/training/catalog" element={<TrainingCatalogPage />} />

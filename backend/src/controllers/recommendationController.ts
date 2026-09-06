@@ -1,11 +1,13 @@
 import { Response } from 'express';
 import TrainingRecommendation from '../models/TrainingRecommendation';
 import TrainingEnrollment from '../models/TrainingEnrollment';
+import TrainingProgram from '../models/TrainingProgram';
 import CompetencyRecord from '../models/CompetencyRecord';
 import User from '../models/User';
 import Notification from '../models/Notification';
 import { AuthRequest } from '../middlewares/auth';
 import { logAudit } from '../services/auditService';
+import { notify } from '../services/notificationService';
 import { runOverdueJob, runReassessmentReminderJob } from '../jobs/complianceAlerts';
 
 // ─── HOD / Dean creates a recommendation (Single or Bulk) ────────────────────
@@ -13,7 +15,7 @@ import { runOverdueJob, runReassessmentReminderJob } from '../jobs/complianceAle
 // POST /api/v1/recommendations
 export const createRecommendation = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { facultyId, facultyIds, departmentId, programId, skillAreaId, reason, dueDate, notes } = req.body;
+    const { facultyId, facultyIds, departmentId, programId, skillAreaId, reason, dueDate, notes, sendEmail: shouldSendEmail } = req.body;
 
     // Resolve target faculty list
     let targetIds: string[] = [];
@@ -27,6 +29,12 @@ export const createRecommendation = async (req: AuthRequest, res: Response): Pro
     } else {
       res.status(400).json({ success: false, error: 'Please specify facultyId, facultyIds, or departmentId' });
       return;
+    }
+
+    let programTitle = 'Training Program';
+    if (programId) {
+      const prog = await TrainingProgram.findById(programId).select('title');
+      if (prog?.title) programTitle = prog.title;
     }
 
     const createdRecs = [];
@@ -50,19 +58,33 @@ export const createRecommendation = async (req: AuthRequest, res: Response): Pro
         scoreBeforeRecommendation,
       });
 
-      // Notify the faculty member
-      await Notification.create({
+      // Dispatch in-app notification and optional email via unified notify service
+      await notify({
         userId: fId,
         type: 'training',
         title: 'New Training Recommended',
-        message: `${req.user?.name} has recommended a training for you. Reason: ${reason}. Due: ${new Date(dueDate).toLocaleDateString()}.`,
+        message: `${req.user?.name} has recommended "${programTitle}" for you. Reason: ${reason}. Due: ${new Date(dueDate).toLocaleDateString()}.`,
         dueDate,
         relatedEntityType: 'TrainingRecommendation',
         relatedEntityId: rec._id,
+        channels: shouldSendEmail ? ['in_app', 'email'] : ['in_app'],
+        emailData: shouldSendEmail ? {
+          template: 'nominationReceived',
+          subject: `Training Recommended: ${programTitle}`,
+          variables: {
+            courseTitle: programTitle,
+            facultyName: 'Faculty Colleague',
+            programType: 'Recommended Training',
+            startDate: new Date(dueDate).toLocaleDateString(),
+            actionUrl: `${process.env.APP_URL || 'http://localhost:5173'}/recommendations`,
+            year: new Date().getFullYear(),
+          },
+        } : undefined,
       });
 
       createdRecs.push(rec);
     }
+
 
     await logAudit(req.user?._id, 'create', 'TrainingRecommendation', createdRecs[0]?._id,
       `Recommended training for ${targetIds.length} faculty member(s)`, null, { count: targetIds.length, targetIds }, req.ip, req.headers['user-agent']);

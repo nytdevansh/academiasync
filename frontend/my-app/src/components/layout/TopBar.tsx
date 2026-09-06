@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, X, Check, ExternalLink } from 'lucide-react';
+import { Bell, X, Check, ExternalLink, Archive, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Avatar } from '../ui/Avatar';
 import { Badge } from '../ui/Badge';
-import { getMyNotifications, markAllRead, markAsRead } from '../../api/notifications';
+import { getMyNotifications, markAllRead, markAsRead, archiveNotification } from '../../api/notifications';
 import type { Notification } from '../../types';
 
 interface TopBarProps { title: string; }
@@ -33,7 +33,8 @@ export const TopBar: React.FC<TopBarProps> = ({ title }) => {
         const res = await getMyNotifications();
         if (res.success && res.data) {
           setNotifications(res.data.slice(0, 6));
-          setUnread(res.data.filter(n => n.status === 'unread').length);
+          // Use backend's authoritative unreadCount field
+          setUnread(res.unreadCount ?? res.data.filter(n => n.status === 'unread').length);
         }
       } catch { /* ignore */ }
     };
@@ -62,6 +63,16 @@ export const TopBar: React.FC<TopBarProps> = ({ title }) => {
       setNotifications(prev => prev.map(n => n._id === notif._id ? { ...n, status: 'read' as const } : n));
       setUnread(prev => Math.max(0, prev - 1));
     }
+  };
+
+  const handleArchive = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    await archiveNotification(id);
+    setNotifications(prev => prev.filter(n => n._id !== id));
+    setUnread(prev => {
+      const wasUnread = notifications.find(n => n._id === id)?.status === 'unread';
+      return wasUnread ? Math.max(0, prev - 1) : prev;
+    });
   };
 
   if (!user) return null;
@@ -139,12 +150,31 @@ export const TopBar: React.FC<TopBarProps> = ({ title }) => {
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-bold text-slate-900 truncate">{n.title}</div>
-                        <div className="text-xs text-slate-600 mt-0.5 leading-relaxed">{n.message}</div>
+                        <div className="text-xs text-slate-600 mt-0.5 leading-relaxed line-clamp-2">{n.message}</div>
                         <div className="text-[10px] text-slate-400 mt-1.5">{timeAgo(n.createdAt)}</div>
                       </div>
+                      <button
+                        title="Archive"
+                        onClick={(e) => handleArchive(e, n._id)}
+                        className="p-1 rounded text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0 self-start mt-0.5 cursor-pointer"
+                      >
+                        <Archive className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   ))
                 )}
+              </div>
+
+              {/* View all footer */}
+              <div className="p-3 border-t border-slate-100 bg-slate-50/50">
+                <Link
+                  to="/notifications"
+                  onClick={() => setShowNotif(false)}
+                  className="flex items-center justify-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  View all notifications
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
             </div>
           )}

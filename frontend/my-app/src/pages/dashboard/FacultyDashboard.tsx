@@ -110,14 +110,7 @@ export const FacultyDashboard: React.FC = () => {
     finally { setDeclining(false); }
   };
 
-  if (loading) return <LoadingSpinner text="Loading faculty dashboard..." />;
-
-  const statusBreakdown = enrollments.reduce((acc: any, e: any) => {
-    acc[e.status] = (acc[e.status] || 0) + 1;
-    return acc;
-  }, {});
-  const pieData = Object.entries(statusBreakdown).map(([name, value]) => ({ name: TRAINING_STATUS_LABELS[name] || name, value }));
-
+  // ── Derived data — hooks MUST be called before any early return ──────────────
   const monthlyHoursData = useMemo(() => {
     const monthsMap = new Map<string, number>();
     const now = new Date();
@@ -126,7 +119,6 @@ export const FacultyDashboard: React.FC = () => {
       const key = d.toLocaleString('en-US', { month: 'short' });
       monthsMap.set(key, 0);
     }
-
     enrollments.forEach((e) => {
       if (['completed', 'certified', 'attended'].includes(e.status)) {
         const date = e.completionDate || e.updatedAt || e.createdAt;
@@ -140,11 +132,19 @@ export const FacultyDashboard: React.FC = () => {
         }
       }
     });
-
     const data = Array.from(monthsMap.entries()).map(([month, hours]) => ({ month, hours }));
     const totalHours = data.reduce((sum, d) => sum + d.hours, 0);
     return { data, totalHours };
   }, [enrollments]);
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  if (loading) return <LoadingSpinner text="Loading faculty dashboard..." />;
+
+  const statusBreakdown = enrollments.reduce((acc: any, e: any) => {
+    acc[e.status] = (acc[e.status] || 0) + 1;
+    return acc;
+  }, {});
+  const pieData = Object.entries(statusBreakdown).map(([name, value]) => ({ name: TRAINING_STATUS_LABELS[name] || name, value }));
 
   return (
     <div className="space-y-6 animate-fadeIn">

@@ -105,6 +105,7 @@ export const NAV_SECTIONS = {
     { label: 'Main', items: [
       { path: '/dashboard', icon: 'LayoutDashboard', label: 'Dashboard' },
       { path: '/profile', icon: 'UserCircle', label: 'My Profile' },
+      { path: '/notifications', icon: 'Bell', label: 'Notifications' },
       { path: '/certificates', icon: 'Award', label: 'My Credentials' },
       { path: '/assessments', icon: 'CheckSquare', label: 'Assessments & Surveys' },
       { path: '/training/catalog', icon: 'GraduationCap', label: 'Training Catalog' },
@@ -117,6 +118,7 @@ export const NAV_SECTIONS = {
     { label: 'Main', items: [
       { path: '/dashboard', icon: 'LayoutDashboard', label: 'Dashboard' },
       { path: '/profile', icon: 'UserCircle', label: 'My Profile' },
+      { path: '/notifications', icon: 'Bell', label: 'Notifications' },
       { path: '/certificates', icon: 'Award', label: 'My Credentials' },
       { path: '/competency', icon: 'BarChart2', label: 'My Competency' },
       { path: '/appraisals', icon: 'ClipboardList', label: 'My Appraisal' },
@@ -139,6 +141,7 @@ export const NAV_SECTIONS = {
     { label: 'Overview', items: [
       { path: '/dashboard', icon: 'LayoutDashboard', label: 'Dashboard' },
       { path: '/profile', icon: 'UserCircle', label: 'My Profile' },
+      { path: '/notifications', icon: 'Bell', label: 'Notifications' },
       { path: '/certificates', icon: 'Award', label: 'My Credentials' },
       { path: '/appraisals', icon: 'ClipboardList', label: 'My Appraisal' },
     ]},
@@ -160,6 +163,7 @@ export const NAV_SECTIONS = {
     { label: 'Main', items: [
       { path: '/dashboard', icon: 'LayoutDashboard', label: 'Dashboard' },
       { path: '/profile', icon: 'UserCircle', label: 'My Profile' },
+      { path: '/notifications', icon: 'Bell', label: 'Notifications' },
       { path: '/certificates', icon: 'Award', label: 'My Credentials' },
       { path: '/assessments', icon: 'CheckSquare', label: 'Surveys & Feedback' },
       { path: '/reports', icon: 'BarChart2', label: 'Reports' },
@@ -169,6 +173,7 @@ export const NAV_SECTIONS = {
     { label: 'Main', items: [
       { path: '/dashboard', icon: 'LayoutDashboard', label: 'Dashboard' },
       { path: '/profile', icon: 'UserCircle', label: 'My Profile' },
+      { path: '/notifications', icon: 'Bell', label: 'Notifications' },
       { path: '/certificates', icon: 'Award', label: 'My Credentials' },
     ]},
     { label: 'Management', items: [
@@ -190,6 +195,7 @@ export const NAV_SECTIONS = {
     ]},
   ],
 };
+
 
 export const CHART_COLORS = ['#2563EB', '#0F766E', '#14B8A6', '#D97706', '#16A34A', '#8B5CF6', '#F43F5E'];
 

@@ -27,20 +27,17 @@ export const EditProfilePage: React.FC = () => {
         setResearchAreasInput(r.data.researchAreas?.join(', ') || '');
         setQualifications(r.data.qualifications || []);
       } else {
-        setBio('Senior academician and researcher specializing in Artificial Intelligence, Cloud Architectures, and Automated Educational Systems.');
-        setResearchAreasInput('Artificial Intelligence, Machine Learning, Cloud Computing');
-        setQualifications([
-          { degree: 'Ph.D. in Computer Science', specialization: 'Distributed Systems', institution: 'National Institute of Technology', year: 2018 },
-        ]);
+        setBio('');
+        setResearchAreasInput('');
+        setQualifications([]);
       }
     }).catch(() => {
-      setBio('Senior academician and researcher specializing in Artificial Intelligence, Cloud Architectures, and Automated Educational Systems.');
-      setResearchAreasInput('Artificial Intelligence, Machine Learning, Cloud Computing');
-      setQualifications([
-        { degree: 'Ph.D. in Computer Science', specialization: 'Distributed Systems', institution: 'National Institute of Technology', year: 2018 },
-      ]);
+      setBio('');
+      setResearchAreasInput('');
+      setQualifications([]);
     }).finally(() => setLoading(false));
   }, []);
+
 
   const handleAddQualification = () => {
     if (!newQual.degree || !newQual.institution) return;

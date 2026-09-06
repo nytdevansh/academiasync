@@ -221,6 +221,10 @@ export interface Notification {
   createdAt: string;
 }
 
+// Alias — use AppNotification in new code to avoid naming conflicts with the browser Notification API
+export type AppNotification = Notification;
+
+
 export interface AuditLog {
   _id: string;
   userId: User;

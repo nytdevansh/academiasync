@@ -27,7 +27,8 @@ import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { getDashboardStats } from '../../api/reports';
 import { getPendingApprovals, approveEnrollment, rejectEnrollment, getPrograms } from '../../api/training';
-import { getAllUsers } from '../../api/users';
+import { getUsersByDepartment } from '../../api/users';
+
 import {
   getDepartmentRecommendations,
   getComplianceStats,
@@ -70,6 +71,7 @@ export const HODDashboard: React.FC = () => {
   const [selectedProgramId, setSelectedProgramId] = useState('');
   const [recommendReason, setRecommendReason] = useState('');
   const [recommendDueDate, setRecommendDueDate] = useState('');
+  const [sendEmailRec, setSendEmailRec] = useState(false);
   const [submittingRec, setSubmittingRec] = useState(false);
 
   const deptId = typeof user?.department === 'object' ? (user?.department as any)?._id : user?.department;
@@ -105,16 +107,15 @@ export const HODDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-    // Load faculty for the modal
-    getAllUsers({ role: 'faculty_member' }).then(res => {
-      if (res.success && res.data) {
-        const deptUsers = deptId
-          ? res.data.filter((u: any) => (u.department?._id || u.department) === deptId)
-          : res.data;
-        setFacultyList(deptUsers || []);
-        if (deptUsers && deptUsers.length > 0) setTargetFacultyId(deptUsers[0]._id);
-      }
-    }).catch(() => {});
+    if (deptId) {
+      getUsersByDepartment(deptId).then(res => {
+        if (res.success && res.data) {
+          const deptUsers = res.data.filter((u: any) => ['faculty_member', 'hod'].includes(u.role));
+          setFacultyList(deptUsers || []);
+          if (deptUsers && deptUsers.length > 0) setTargetFacultyId(deptUsers[0]._id);
+        }
+      }).catch(() => {});
+    }
 
     getPrograms().then(res => {
       if (res.success) {
@@ -157,6 +158,7 @@ export const HODDashboard: React.FC = () => {
           programId: selectedProgramId || undefined,
           reason: recommendReason,
           dueDate: recommendDueDate,
+          sendEmail: sendEmailRec,
         });
       } else {
         await createRecommendation({
@@ -164,11 +166,13 @@ export const HODDashboard: React.FC = () => {
           programId: selectedProgramId || undefined,
           reason: recommendReason,
           dueDate: recommendDueDate,
+          sendEmail: sendEmailRec,
         });
       }
       setRecommendModalOpen(false);
       setRecommendReason('');
       setRecommendDueDate('');
+      setSendEmailRec(false);
       await fetchData();
     } catch (err) {
       console.error(err);
@@ -176,6 +180,7 @@ export const HODDashboard: React.FC = () => {
       setSubmittingRec(false);
     }
   };
+
 
   const handleRecordPostScore = async () => {
     if (!selectedRecForAssess) return;
@@ -654,8 +659,22 @@ export const HODDashboard: React.FC = () => {
               required
             />
           </div>
+
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-blue-50/60 border border-blue-100">
+            <input
+              type="checkbox"
+              id="hodSendEmailToggle"
+              checked={sendEmailRec}
+              onChange={(e) => setSendEmailRec(e.target.checked)}
+              className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
+            />
+            <label htmlFor="hodSendEmailToggle" className="text-xs font-semibold text-slate-700 cursor-pointer select-none">
+              Also dispatch email alert to target recipient(s)
+            </label>
+          </div>
         </form>
       </Modal>
+
 
       {/* Modal: Record Post-Training Assessment */}
       <Modal

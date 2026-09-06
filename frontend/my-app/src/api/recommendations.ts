@@ -56,10 +56,12 @@ export const createRecommendation = async (payload: {
   reason: string;
   dueDate: string;
   notes?: string;
+  sendEmail?: boolean;
 }): Promise<ApiResponse<any>> => {
   const { data } = await axiosInstance.post('/recommendations', payload);
   return data;
 };
+
 
 export const getDepartmentRecommendations = async (deptId: string): Promise<ApiResponse<TrainingRecommendation[]>> => {
   const { data } = await axiosInstance.get(`/recommendations/department/${deptId}`);
