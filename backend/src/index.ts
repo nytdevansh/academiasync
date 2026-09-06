@@ -1,9 +1,16 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+import dns from 'dns';
+// Force IPv4-first resolution to prevent ENETUNREACH on dual-stack environments without IPv6 routing
+if (typeof dns.setDefaultResultOrder === 'function') {
+  dns.setDefaultResultOrder('ipv4first');
+}
+
 import { validateEnv } from './config/validateEnv';
 // Validate required secrets and configuration before server startup
 validateEnv();
+
 
 import express from 'express';
 import cors from 'cors';

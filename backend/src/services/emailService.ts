@@ -8,6 +8,13 @@
  *  3. Pre-install Fallback Mock Logger (keeps compilation & testing green if nodemailer is not yet installed)
  */
 
+import dns from 'dns';
+
+// Enforce IPv4-first lookup globally across Node.js to eliminate ENETUNREACH on IPv6 addresses
+if (typeof dns.setDefaultResultOrder === 'function') {
+  dns.setDefaultResultOrder('ipv4first');
+}
+
 export interface SendEmailOptions {
   to: string;
   subject: string;
@@ -30,6 +37,7 @@ try {
 } catch {
   nodemailerModule = null;
 }
+
 
 let cachedTransporter: any = null;
 let cachedTransportMode: 'smtp' | 'ethereal' | 'mock_logger' = 'mock_logger';
@@ -85,6 +93,7 @@ const getTransporter = async (): Promise<any> => {
           secure,
           auth: { user, pass },
           pool: true,
+          family: 4,
           maxConnections: 5,
           maxMessages: 100,
           connectionTimeout: 15000, // 15s to accommodate Gmail TLS handshake
@@ -226,6 +235,24 @@ export const sendEmail = async ({
       // When real SMTP is configured, do NOT silently swallow errors! Surface the real failure!
       const errorMsg = deliveryErr?.message || 'SMTP delivery failed';
       console.error(`❌ [EmailService Error] Real SMTP delivery failed for "${to}":`, errorMsg);
+
+      // Reset pool on network/socket connection errors to prevent dead socket inheritance
+      const isConnectionError =
+        deliveryErr?.code === 'ENETUNREACH' ||
+        deliveryErr?.code === 'ETIMEDOUT' ||
+        deliveryErr?.code === 'ECONNREFUSED' ||
+        deliveryErr?.code === 'ECONNRESET' ||
+        deliveryErr?.code === 'ESOCKET' ||
+        (typeof errorMsg === 'string' && (errorMsg.includes('timed out') || errorMsg.includes('ENETUNREACH') || errorMsg.includes('Connection timeout')));
+
+      if (isConnectionError) {
+        console.warn(`⚠️  [EmailService] Network/socket failure detected (${deliveryErr?.code || 'timeout'}). Resetting pooled transporter.`);
+        try { cachedTransporter?.close?.(); } catch {}
+        cachedTransporter = null;
+        transporterInitialized = false;
+        initPromise = null;
+      }
+
       return {
         success: false,
         error: errorMsg,
@@ -239,5 +266,22 @@ export const sendEmail = async ({
     };
   }
 };
+
+/**
+ * Diagnostic utility to verify SMTP connectivity and credentials.
+ */
+export const verifySmtpConnection = async (): Promise<{ success: boolean; mode: string; error?: string }> => {
+  try {
+    const transporter = await getTransporter();
+    if (!transporter) {
+      return { success: true, mode: cachedTransportMode };
+    }
+    await transporter.verify();
+    return { success: true, mode: cachedTransportMode };
+  } catch (err: any) {
+    return { success: false, mode: cachedTransportMode, error: err?.message || String(err) };
+  }
+};
+
 
 
