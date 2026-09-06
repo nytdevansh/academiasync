@@ -56,7 +56,15 @@ let initPromise: Promise<any> | null = null;
 
 export const isNodemailerInstalled = (): boolean => Boolean(nodemailerModule);
 
-export const getEmailTransportMode = (): 'smtp' | 'ethereal' | 'mock_logger' => {
+export type EmailTransportMode = 'resend' | 'sendgrid' | 'smtp' | 'ethereal' | 'mock_logger';
+
+export const getEmailTransportMode = (): EmailTransportMode => {
+  if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim()) {
+    return 'resend';
+  }
+  if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY.trim()) {
+    return 'sendgrid';
+  }
   if (!nodemailerModule) return 'mock_logger';
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER || process.env.SMTP_USERNAME;
@@ -66,6 +74,7 @@ export const getEmailTransportMode = (): 'smtp' | 'ethereal' | 'mock_logger' => 
   }
   return cachedTransportMode;
 };
+
 
 /**
  * Initializes and returns an active email transporter.
@@ -162,9 +171,112 @@ const getTransporter = async (): Promise<any> => {
 };
 
 /**
+ * Dispatches an email via Resend's REST API over HTTPS (Port 443).
+ * Compatible with all cloud hosts (Render, Vercel, Railway) that block raw SMTP ports.
+ */
+const sendViaResendHttp = async ({
+  to,
+  subject,
+  html,
+  text,
+  from,
+}: SendEmailOptions & { from: string }): Promise<SendEmailResult> => {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) {
+    return { success: false, error: 'RESEND_API_KEY is not configured in .env' };
+  }
+
+  // Resend requires a verified domain or its default onboarding sender for testing:
+  const resendFrom = process.env.RESEND_FROM || (from.includes('@') ? from : 'AcademiaSync <onboarding@resend.dev>');
+
+  try {
+    console.log(`📧 [EmailService:Resend] Dispatching to "${to}" via HTTPS API (Port 443)...`);
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: resendFrom,
+        to: [to],
+        subject,
+        html,
+        text: text || html.replace(/<[^>]+>/g, ''),
+      }),
+    });
+
+    const data: any = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      const errorMsg = data?.message || `Resend API error (${response.status} ${response.statusText})`;
+      console.error(`❌ [EmailService:Resend Error] Delivery failed to "${to}":`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
+
+    console.log(`✅ [Email Sent Successfully via Resend HTTPS] "${subject}" -> ${to} (id: ${data?.id})`);
+    return {
+      success: true,
+      messageId: data?.id,
+    };
+  } catch (err: any) {
+    console.error(`❌ [EmailService:Resend Network Error] Failed to reach Resend API for "${to}":`, err?.message || err);
+    return { success: false, error: err?.message || 'Resend HTTP request failed' };
+  }
+};
+
+/**
+ * Dispatches an email via SendGrid's v3 Mail Send REST API over HTTPS (Port 443).
+ */
+const sendViaSendgridHttp = async ({
+  to,
+  subject,
+  html,
+  text,
+  fromName,
+  fromAddress,
+}: SendEmailOptions & { fromName: string; fromAddress: string }): Promise<SendEmailResult> => {
+  const apiKey = process.env.SENDGRID_API_KEY?.trim();
+  if (!apiKey) {
+    return { success: false, error: 'SENDGRID_API_KEY is not configured in .env' };
+  }
+
+  try {
+    console.log(`📧 [EmailService:SendGrid] Dispatching to "${to}" via HTTPS API (Port 443)...`);
+    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: to }] }],
+        from: { email: fromAddress, name: fromName },
+        subject,
+        content: [
+          { type: 'text/html', value: html },
+          ...(text ? [{ type: 'text/plain', value: text }] : []),
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      console.error(`❌ [EmailService:SendGrid Error] Delivery failed to "${to}":`, errorText);
+      return { success: false, error: errorText || `SendGrid error (${response.status})` };
+    }
+
+    console.log(`✅ [Email Sent Successfully via SendGrid HTTPS] "${subject}" -> ${to}`);
+    return { success: true, messageId: `sg-${Date.now()}` };
+  } catch (err: any) {
+    console.error(`❌ [EmailService:SendGrid Network Error] Failed to reach SendGrid API for "${to}":`, err?.message || err);
+    return { success: false, error: err?.message || 'SendGrid HTTP request failed' };
+  }
+};
+
+/**
  * Dispatch an email to a single recipient.
- * If SMTP is configured, performs real delivery and surfaces legitimate errors if it fails.
- * If SMTP is NOT configured (dev mode), previews in console and returns success.
+ * Routes automatically through Resend (HTTPS), SendGrid (HTTPS), SMTP, or Local Dev Logger.
  */
 export const sendEmail = async ({
   to,
@@ -178,14 +290,27 @@ export const sendEmail = async ({
     }
 
     const fromName = process.env.EMAIL_FROM_NAME || 'AcademiaSync Portal';
-    const fromAddress = process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER || 'notifications@academiasync.edu';
+    const fromAddress = process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER || 'onboarding@resend.dev';
     const from = `"${fromName}" <${fromAddress}>`;
 
+    const mode = getEmailTransportMode();
+
+    // ── Tier 1: Resend REST API over HTTPS (Port 443) ──
+    if (mode === 'resend') {
+      return await sendViaResendHttp({ to, subject, html, text, from });
+    }
+
+    // ── Tier 2: SendGrid REST API over HTTPS (Port 443) ──
+    if (mode === 'sendgrid') {
+      return await sendViaSendgridHttp({ to, subject, html, text, fromName, fromAddress });
+    }
+
+    // ── Tier 3: SMTP (Local dev or unblocked servers) ──
     const transporter = await getTransporter();
 
-    // ── Case A: Real SMTP was configured but transporter could not be initialized ──
+    // Case A: Real SMTP was configured but transporter could not be initialized
     if (!transporter && cachedTransportMode === 'smtp') {
-      const err = 'SMTP host was configured, but connection could not be established. Check SMTP_HOST, port, and credentials in .env.';
+      const err = 'SMTP host was configured, but connection could not be established. Note: Render blocks outbound SMTP ports 25, 465, and 587. To send emails from Render, add RESEND_API_KEY to your environment variables.';
       console.error(`❌ [EmailService] Delivery aborted to "${to}": ${err}`);
       return {
         success: false,
@@ -193,10 +318,10 @@ export const sendEmail = async ({
       };
     }
 
-    // ── Case B: No SMTP Configured (Local Dev / Offline Mock Logger) ──
+    // Case B: No SMTP or API Key Configured (Local Dev / Offline Mock Logger)
     if (!transporter && cachedTransportMode === 'mock_logger') {
       console.log('\n' + '─'.repeat(70));
-      console.log('📧 [Console Email Preview] (Local Dev / No SMTP Configured in .env)');
+      console.log('📧 [Console Email Preview] (Local Dev / No RESEND_API_KEY or SMTP Configured in .env)');
       console.log(`   To:      ${to}`);
       console.log(`   From:    ${from}`);
       console.log(`   Subject: ${subject}`);
@@ -209,6 +334,7 @@ export const sendEmail = async ({
         previewUrl: 'console-preview',
       };
     }
+
 
     // ── Case C: Active SMTP / Ethereal Transporter Delivery ──
     try {
