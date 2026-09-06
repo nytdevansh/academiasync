@@ -10,6 +10,7 @@ import { Modal } from '../../components/ui/Modal';
 import { FormField } from '../../components/ui/FormField';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { Pagination } from '../../components/ui/Pagination';
 import {
   getMyNotifications, markAsRead, markAllRead,
   archiveNotification, deleteNotification, broadcastNotification
@@ -58,6 +59,8 @@ export const NotificationsPage: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabType>('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [markingAll, setMarkingAll] = useState(false);
   const [actionIds, setActionIds] = useState<Set<string>>(new Set());
 
@@ -95,6 +98,12 @@ export const NotificationsPage: React.FC = () => {
   });
 
   const unreadCount = notifications.filter(n => n.status === 'unread').length;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paginatedNotifications = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [tab, pageSize]);
 
   const handleMarkRead = async (id: string) => {
     setActionIds(prev => new Set(prev).add(id));
@@ -235,7 +244,7 @@ export const NotificationsPage: React.FC = () => {
         />
       ) : (
         <div className="space-y-2">
-          {filtered.map(notif => (
+          {paginatedNotifications.map(notif => (
             <Card
               key={notif._id}
               className={`p-4 flex items-start gap-4 transition-all ${notif.status === 'unread' ? 'border-blue-200 bg-blue-50/30' : ''}`}
@@ -296,6 +305,15 @@ export const NotificationsPage: React.FC = () => {
               </div>
             </Card>
           ))}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={filtered.length}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 20, 50]}
+          />
         </div>
       )}
 

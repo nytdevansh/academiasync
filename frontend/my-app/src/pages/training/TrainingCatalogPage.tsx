@@ -12,6 +12,7 @@ import { Modal } from '../../components/ui/Modal';
 import { FormField } from '../../components/ui/FormField';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
+import { Pagination } from '../../components/ui/Pagination';
 import { getPrograms, enrollInProgram, createProgram, updateProgram, deleteProgram } from '../../api/training';
 import { getAllDepartments } from '../../api/departments';
 import { CourseManageModal } from './CourseManageModal';
@@ -29,6 +30,8 @@ export const TrainingCatalogPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(6);
   const [selectedProgram, setSelectedProgram] = useState<TrainingProgram | null>(null);
   const [manageProgram, setManageProgram] = useState<TrainingProgram | null>(null);
   const [enrollLoading, setEnrollLoading] = useState(false);
@@ -173,6 +176,12 @@ export const TrainingCatalogPage: React.FC = () => {
     p.title.toLowerCase().includes(search.toLowerCase()) &&
     (typeFilter === '' || p.type === typeFilter)
   );
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paginatedPrograms = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, typeFilter, pageSize]);
 
   const handleEnroll = async () => {
     if (!selectedProgram) return;
@@ -231,8 +240,9 @@ export const TrainingCatalogPage: React.FC = () => {
       {filtered.length === 0 ? (
         <EmptyState title="No programs match your search" description="Try adjusting your filter or search query." />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map(program => (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {paginatedPrograms.map(program => (
             <Card
               key={program._id}
               hover
@@ -359,7 +369,16 @@ export const TrainingCatalogPage: React.FC = () => {
               </div>
             </Card>
           ))}
-        </div>
+          </div>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={filtered.length}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </>
       )}
 
       {/* Enrollment Modal */}

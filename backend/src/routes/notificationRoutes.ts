@@ -5,7 +5,8 @@ import {
   markAllRead,
   archiveNotification,
   deleteNotification,
-  broadcastNotification
+  broadcastNotification,
+  testEmailDispatch
 } from '../controllers/notificationController';
 import { protect } from '../middlewares/auth';
 import { authorize } from '../middlewares/rbac';
@@ -19,6 +20,7 @@ router.put('/:id/read', markAsRead);
 router.put('/:id/archive', archiveNotification);
 router.delete('/:id', deleteNotification);
 router.post('/broadcast', authorize('administrator', 'dean'), broadcastNotification);
+router.post('/test-email', authorize('administrator'), testEmailDispatch);
 
 export default router;
 

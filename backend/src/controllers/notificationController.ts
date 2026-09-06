@@ -2,7 +2,7 @@ import { Response } from 'express';
 import Notification from '../models/Notification';
 import User from '../models/User';
 import { AuthRequest } from '../middlewares/auth';
-import { sendEmail } from '../services/emailService';
+import { sendEmail, verifySmtpConnection } from '../services/emailService';
 
 export const getMyNotifications = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -110,6 +110,53 @@ export const broadcastNotification = async (req: AuthRequest, res: Response): Pr
       success: true,
       count: userIds.length,
       message: `Notification broadcast to ${userIds.length} users.`
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+export const testEmailDispatch = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const targetEmail = req.body?.email || req.user?.email;
+    if (!targetEmail) {
+      res.status(400).json({ success: false, error: 'Recipient email address is required' });
+      return;
+    }
+
+    const verification = await verifySmtpConnection();
+    const result = await sendEmail({
+      to: targetEmail,
+      subject: '[AcademiaSync Test] Diagnostic Email Dispatch',
+      html: `
+        <div style="font-family: sans-serif; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; max-width: 560px;">
+          <h2 style="color: #2563eb; margin-top: 0;">AcademiaSync Diagnostic Email</h2>
+          <p style="color: #475569; font-size: 14px; line-height: 1.6;">
+            This is an automated diagnostic test message dispatched by the AcademiaSync Faculty Enhancement System to verify that email transport credentials and delivery pipelines are operational.
+          </p>
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; font-size: 13px; color: #1e293b;">
+            <div><strong>Active Transport:</strong> ${verification.mode}</div>
+            <div><strong>Recipient:</strong> ${targetEmail}</div>
+            <div><strong>Timestamp:</strong> ${new Date().toISOString()}</div>
+          </div>
+          <p style="color: #94a3b8; font-size: 12px; margin-top: 16px;">
+            If you received this email, outbound delivery is verified and functional.
+          </p>
+        </div>
+      `,
+      text: `AcademiaSync Diagnostic Email: Email transport is operational (${verification.mode}) to ${targetEmail} at ${new Date().toISOString()}`,
+    });
+
+    res.json({
+      success: result.success,
+      mode: verification.mode,
+      isLiveDelivery: verification.mode !== 'mock_logger',
+      messageId: result.messageId,
+      previewUrl: result.previewUrl,
+      error: result.error,
+      warning: verification.mode === 'mock_logger'
+        ? 'Email was logged to server console only (local fallback mode). To send live emails in production, ensure GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, and GMAIL_REFRESH_TOKEN are set in your environment.'
+        : undefined,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import User from '../models/User';
 import FacultyProfile from '../models/FacultyProfile';
 import Department from '../models/Department';
+import RefreshToken from '../models/RefreshToken';
 import { AuthRequest } from '../middlewares/auth';
 import { logAudit } from '../services/auditService';
 
@@ -127,8 +128,12 @@ export const deleteUser = async (req: AuthRequest, res: Response): Promise<void>
   try {
     const user = await User.findByIdAndUpdate(req.params.id, { status: 'suspended' }, { new: true });
     if (!user) { res.status(404).json({ success: false, error: 'User not found' }); return; }
-    await logAudit(req.user?._id, 'delete', 'User', req.params.id, `Suspended user ${user.email}`, null, null, req.ip, req.headers['user-agent']);
-    res.json({ success: true, data: { message: 'User suspended' } });
+
+    // Invalidate all active refresh token sessions for the suspended user
+    await RefreshToken.updateMany({ userId: req.params.id }, { revoked: true });
+
+    await logAudit(req.user?._id, 'delete', 'User', req.params.id, `Suspended user ${user.email} and terminated all active sessions`, null, null, req.ip, req.headers['user-agent']);
+    res.json({ success: true, data: { message: 'User suspended and all active sessions terminated' } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -141,8 +146,33 @@ export const resetPassword = async (req: AuthRequest, res: Response): Promise<vo
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(newPassword, salt);
     await User.findByIdAndUpdate(req.params.id, { passwordHash });
-    await logAudit(req.user?._id, 'update', 'User', req.params.id, 'Password reset by admin', null, null, req.ip, req.headers['user-agent']);
-    res.json({ success: true, data: { message: 'Password reset successfully' } });
+
+    // Invalidate all existing sessions upon password reset
+    await RefreshToken.updateMany({ userId: req.params.id }, { revoked: true });
+
+    await logAudit(req.user?._id, 'update', 'User', req.params.id, 'Password reset by admin and sessions invalidated', null, null, req.ip, req.headers['user-agent']);
+    res.json({ success: true, data: { message: 'Password reset successfully and existing sessions revoked' } });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// POST /api/v1/users/:id/revoke-sessions — admin (force logout all sessions)
+export const revokeUserSessions = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) { res.status(404).json({ success: false, error: 'User not found' }); return; }
+
+    const result = await RefreshToken.updateMany({ userId: req.params.id }, { revoked: true });
+    await logAudit(req.user?._id, 'logout', 'User', req.params.id, `Admin terminated all active sessions for ${user.email}`, null, null, req.ip, req.headers['user-agent']);
+
+    res.json({
+      success: true,
+      data: {
+        message: `Terminated ${result.modifiedCount} active session(s) for ${user.name}`,
+        revokedCount: result.modifiedCount,
+      },
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

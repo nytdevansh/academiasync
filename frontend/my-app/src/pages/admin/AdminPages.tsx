@@ -26,6 +26,7 @@ import { Modal } from '../../components/ui/Modal';
 import { FormField } from '../../components/ui/FormField';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { Pagination } from '../../components/ui/Pagination';
 import { getAllUsers, createUser, updateUser, deleteUser, resetUserPassword } from '../../api/users';
 import { getAllDepartments } from '../../api/departments';
 import { getAuditLogs } from '../../api/audit';
@@ -40,6 +41,8 @@ export const UserManagementPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Create User Modal State
   const [createModal, setCreateModal] = useState(false);
@@ -178,6 +181,12 @@ export const UserManagementPage: React.FC = () => {
     const matchesDept = !deptFilter || userDeptId === deptFilter;
     return matchesSearch && matchesRole && matchesDept;
   });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paginatedUsers = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, roleFilter, deptFilter, pageSize]);
 
   if (loading) return <LoadingSpinner text="Loading users directory..." />;
 
@@ -250,7 +259,7 @@ export const UserManagementPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map((u) => (
+                {paginatedUsers.map((u) => (
                   <tr key={u._id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-3.5 px-5">
                       <div className="flex items-center gap-3">
@@ -321,6 +330,15 @@ export const UserManagementPage: React.FC = () => {
           </div>
         )}
       </Card>
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalItems={filtered.length}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        pageSizeOptions={[10, 20, 50]}
+      />
 
       {/* Create User Modal */}
       <Modal

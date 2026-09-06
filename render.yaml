@@ -14,8 +14,29 @@ services:
       - key: JWT_SECRET
         sync: false   # Set this in the Render dashboard — never commit the real value
       - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
         value: 7d
+      - key: URL_ENC_KEY
+        sync: false   # 64-char hex string (32 bytes) for AES-256-GCM certificate encryption
       - key: MONGO_URI
-        sync: false   # Set this in the Render dashboard
+        sync: false   # Set this in the Render dashboard (MongoDB Atlas connection URI)
+      - key: DB_NAME
+        value: academiasync
       - key: CORS_ORIGIN
         sync: false   # e.g. https://your-app.vercel.app
+      # Google Gmail API OAuth2 Configuration (HTTPS Port 443 — Render blocks raw SMTP ports 25/465/587)
+      - key: GMAIL_CLIENT_ID
+        sync: false
+      - key: GMAIL_CLIENT_SECRET
+        sync: false
+      - key: GMAIL_REFRESH_TOKEN
+        sync: false
+      - key: GMAIL_REDIRECT_URI
+        value: https://developers.google.com/oauthplayground
+      - key: GMAIL_USER
+        sync: false   # e.g. notifications@academiasync.edu or your-account@gmail.com
+      - key: EMAIL_FROM_ADDRESS
+        sync: false   # e.g. notifications@academiasync.edu
+      - key: EMAIL_FROM_NAME
+        value: "AcademiaSync Institutional Portal"

@@ -28,6 +28,7 @@ import { Badge } from '../../components/ui/Badge';
 import { ControlledTabs } from '../../components/ui/Tabs';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { Pagination } from '../../components/ui/Pagination';
 import { AssessmentBuilderModal } from './AssessmentBuilderModal';
 import {
   getAssessments,
@@ -54,6 +55,8 @@ export const AssessmentListPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [selectedTopic, setSelectedTopic] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(6);
 
   // Modal State
   const [builderOpen, setBuilderOpen] = useState(false);
@@ -149,6 +152,12 @@ export const AssessmentListPage: React.FC = () => {
 
     return matchesSearch && matchesTopic && matchesTab;
   });
+  const totalPages = Math.max(1, Math.ceil(filteredAssessments.length / pageSize));
+  const paginatedAssessments = filteredAssessments.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, selectedTopic, searchQuery, pageSize]);
 
   return (
     <div className="space-y-6 pb-16 animate-fadeIn">
@@ -234,7 +243,7 @@ export const AssessmentListPage: React.FC = () => {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAssessments.map(item => {
+          {paginatedAssessments.map(item => {
             const isOwner = item.createdBy?._id === user?._id;
             const canManage = ['dean', 'administrator'].includes(user?.role || '') || isOwner;
             const isGraded = item.settings.isGraded;
@@ -418,6 +427,14 @@ export const AssessmentListPage: React.FC = () => {
               </Card>
             );
           })}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={filteredAssessments.length}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       )}
 

@@ -16,9 +16,11 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import mongoose from 'mongoose';
 import { connectDB } from './config/db';
 import { errorHandler } from './middlewares/errorHandler';
 import { apiLimiter } from './middlewares/rateLimiter';
+import { getEmailTransportMode } from './services/emailService';
 
 // Route imports
 import authRoutes from './routes/authRoutes';
@@ -104,7 +106,25 @@ app.get('/', (_req, res) => res.json({
   },
 }));
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', app: 'AcademiaSync API', version: '1.0.0' }));
+app.get('/health', (_req, res) => {
+  const isDbConnected = mongoose.connection.readyState === 1;
+  const status = isDbConnected ? 'ok' : 'degraded';
+
+  res.status(isDbConnected ? 200 : 503).json({
+    status,
+    app: 'AcademiaSync API',
+    version: '1.0.0',
+    uptime: Math.floor(process.uptime()),
+    database: {
+      status: isDbConnected ? 'connected' : 'disconnected',
+      name: mongoose.connection.name || undefined,
+    },
+    emailService: {
+      mode: getEmailTransportMode(),
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // API Routes — all versioned under /api/v1
 const API = '/api/v1';
