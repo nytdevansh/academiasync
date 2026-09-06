@@ -9,6 +9,8 @@ export interface INotification extends Document {
   status: 'unread' | 'read' | 'archived';
   relatedEntityType?: string;
   relatedEntityId?: mongoose.Types.ObjectId;
+  emailStatus?: 'sent' | 'failed' | 'skipped';
+  emailDispatchedAt?: Date;
   createdAt: Date;
 }
 
@@ -22,6 +24,8 @@ const notificationSchema = new Schema<INotification>(
     status: { type: String, enum: ['unread', 'read', 'archived'], default: 'unread' },
     relatedEntityType: { type: String },
     relatedEntityId: { type: Schema.Types.ObjectId },
+    emailStatus: { type: String, enum: ['sent', 'failed', 'skipped'], default: 'skipped' },
+    emailDispatchedAt: { type: Date },
   },
   { timestamps: true }
 );

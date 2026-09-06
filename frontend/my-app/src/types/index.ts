@@ -218,6 +218,8 @@ export interface Notification {
   status: NotificationStatus;
   relatedEntityType?: string;
   relatedEntityId?: string;
+  emailStatus?: 'sent' | 'failed' | 'skipped';
+  emailDispatchedAt?: string;
   createdAt: string;
 }
 

@@ -87,6 +87,8 @@ export const broadcastNotification = async (req: AuthRequest, res: Response): Pr
       title,
       message,
       status: 'unread',
+      emailStatus: shouldSendEmail ? 'sent' : 'skipped',
+      emailDispatchedAt: shouldSendEmail ? new Date() : undefined,
     }));
 
     if (notifs.length > 0) {
@@ -106,15 +108,36 @@ export const broadcastNotification = async (req: AuthRequest, res: Response): Pr
       }
     }
 
+    const quotaWarning = shouldSendEmail && users.length > 500
+      ? `Broadcast recipient count (${users.length}) exceeds personal Gmail API daily limit (~500/day). For institutional distributions of this scale, configure a Google Workspace account (2,000/day) or transactional email service (Resend/SendGrid).`
+      : null;
+
     res.status(201).json({
       success: true,
       count: userIds.length,
+      emailDispatched: Boolean(shouldSendEmail),
+      warning: quotaWarning,
       message: `Notification broadcast to ${userIds.length} users.`
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 };
+
+interface DiagnosticLogEntry {
+  id: string;
+  timestamp: string;
+  recipient: string;
+  mode: string;
+  isLiveDelivery: boolean;
+  success: boolean;
+  messageId: string | null;
+  previewUrl: string | null;
+  error: string | null;
+  warning: string | null;
+}
+
+const recentTestEmailLogs: DiagnosticLogEntry[] = [];
 
 export const testEmailDispatch = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -147,19 +170,47 @@ export const testEmailDispatch = async (req: AuthRequest, res: Response): Promis
       text: `AcademiaSync Diagnostic Email: Email transport is operational (${verification.mode}) to ${targetEmail} at ${new Date().toISOString()}`,
     });
 
+    const warningText = verification.mode === 'mock_logger'
+      ? 'Email was logged to server console only (local fallback mode). To send live emails in production, ensure GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, and GMAIL_REFRESH_TOKEN are set in your environment.'
+      : null;
+
+    const logEntry: DiagnosticLogEntry = {
+      id: `test-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      recipient: targetEmail,
+      mode: verification.mode,
+      isLiveDelivery: verification.mode !== 'mock_logger',
+      success: result.success,
+      messageId: result.messageId || null,
+      previewUrl: result.previewUrl || null,
+      error: result.error || null,
+      warning: warningText,
+    };
+
+    recentTestEmailLogs.unshift(logEntry);
+    if (recentTestEmailLogs.length > 20) {
+      recentTestEmailLogs.pop();
+    }
+
     res.json({
       success: result.success,
       mode: verification.mode,
       isLiveDelivery: verification.mode !== 'mock_logger',
-      messageId: result.messageId,
-      previewUrl: result.previewUrl,
-      error: result.error,
-      warning: verification.mode === 'mock_logger'
-        ? 'Email was logged to server console only (local fallback mode). To send live emails in production, ensure GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, and GMAIL_REFRESH_TOKEN are set in your environment.'
-        : undefined,
+      messageId: result.messageId || null,
+      previewUrl: result.previewUrl || null,
+      error: result.error || null,
+      warning: warningText,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
+};
+
+export const getTestEmailHistory = async (_req: AuthRequest, res: Response): Promise<void> => {
+  res.json({
+    success: true,
+    count: recentTestEmailLogs.length,
+    data: recentTestEmailLogs,
+  });
 };
 

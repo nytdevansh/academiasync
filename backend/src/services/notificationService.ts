@@ -90,6 +90,15 @@ export const notify = async ({
 
         emailSuccess = emailRes.success;
         previewUrl = emailRes.previewUrl;
+
+        // Persist email delivery status on the in-app notification record
+        if (notificationId) {
+          await Notification.findByIdAndUpdate(notificationId, {
+            emailStatus: emailRes.success ? 'sent' : 'failed',
+            emailDispatchedAt: new Date(),
+          });
+        }
+
         if (!emailRes.success) {
           console.error(`❌ [NotificationService] Email delivery failed for ${recipient.email}: ${emailRes.error}`);
           return {
@@ -105,6 +114,12 @@ export const notify = async ({
       }
     } catch (err: any) {
       console.error('❌ [NotificationService] Failed to process email notification:', err?.message || err);
+      if (notificationId) {
+        await Notification.findByIdAndUpdate(notificationId, {
+          emailStatus: 'failed',
+          emailDispatchedAt: new Date(),
+        }).catch(() => {});
+      }
       return {
         inAppSuccess,
         emailSuccess: false,

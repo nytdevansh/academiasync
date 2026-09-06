@@ -19,6 +19,9 @@ AcademiaSync is an institutional-grade faculty enhancement, professional develop
 - [Database Seeding & Demo Accounts](#database-seeding--demo-accounts)
 - [Health Check & Readiness Contract](#health-check--readiness-contract)
 - [Email Architecture & Cloud Delivery](#email-architecture--cloud-delivery)
+  - [The Cloud SMTP Problem](#the-cloud-smtp-problem)
+  - [Gmail REST API over HTTPS](#academiasyncs-solution-gmail-rest-api-over-https)
+  - [Gmail Sending Quotas & Scale](#gmail-api-sending-quotas--enterprise-scale)
 - [Rate Limiting & Security Architecture](#rate-limiting--security-architecture)
 - [Frontend Pages & Responsibilities](#frontend-pages--responsibilities)
   - [Public Campus Pages](#public-campus-pages)
@@ -31,6 +34,9 @@ AcademiaSync is an institutional-grade faculty enhancement, professional develop
   - [Backend on Render](#backend-on-render)
   - [Frontend on Vercel](#frontend-on-vercel)
 - [Testing & Verification](#testing--verification)
+  - [Automated Pipeline Test Suite](#automated-pipeline-test-suite-npm-test)
+  - [Concurrency & Security Tests](#concurrency--security-tests)
+  - [Production Build Verification](#production-build-verification)
 - [Security Notes](#security-notes)
 - [License](#license)
 
@@ -164,7 +170,7 @@ EMAIL_FROM_NAME="AcademiaSync Institutional Portal"
 > [!NOTE]
 > **Database Environment Variables Explained**:
 > - **`MONGO_URI`**: The canonical database connection string. For backwards compatibility with external cloud environments, the server also accepts `MONGODB_URI` and `MONGODB_ATLAS_URI`. The connection resolver evaluates them in strict precedence order: `MONGO_URI` &rarr; `MONGODB_URI` &rarr; `MONGODB_ATLAS_URI` &rarr; `mongodb://localhost:27017/academiasync`.
-> - **`DB_NAME`**: Specifies the target database name passed explicitly to `mongoose.connect(uri, { dbName: targetDb })`. When using cloud providers like MongoDB Atlas, connection strings often omit the database path or default to `test`. Setting `DB_NAME=academiasync` ensures Mongoose binds to the intended logical database regardless of URI formatting.
+> - **`DB_NAME`**: Specifies the target database name passed explicitly to `mongoose.connect(uri, { dbName: targetDb })`. When using cloud providers like MongoDB Atlas, connection strings often omit the database path or default to `test`. Setting `DB_NAME=academiasync` ensures Mongoose binds to the intended logical database regardless of URI formatting (`DB_NAME`, when set, takes precedence over any database name embedded in the URI).
 
 > [!NOTE]
 > **Token Lifespan Architecture**:
@@ -279,6 +285,7 @@ The backend exposes a readiness and liveness endpoint at `GET /health`. Unlike b
   "timestamp": "2026-09-06T12:30:00.000Z"
 }
 ```
+*(Note: `uptime` indicates the live server process uptime in seconds and changes dynamically on every request).*
 
 ---
 
@@ -294,7 +301,13 @@ AcademiaSync routes all outbound email over **HTTPS (Port 443)** using the offic
 2. **RFC 2822 & Base64url Encoding**: Dynamically constructs MIME-compliant email messages (with UTF-8 encoded subject headers) and encodes them using URL-safe Base64 (`+` &rarr; `-`, `/` &rarr; `_`).
 3. **HTTP Dispatch**: Dispatches via `POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send`. Port 443 is universally open across all cloud hosting providers.
 4. **Local Dev Fallback**: If Gmail OAuth2 variables are omitted from `.env`, the system automatically falls back to an instant **Console Email Preview Logger** without crashing or hanging requests.
-5. **Admin Deliverability Verification**: Administrators can dispatch a live test email at any time via `POST /api/v1/notifications/test-email` to verify credential validity in production.
+5. **Per-Notification Delivery Persistence**: Every notification record tracks `emailStatus` (`sent`, `failed`, or `skipped`) and `emailDispatchedAt` to give administrators complete visibility into delivery outcomes.
+6. **Admin Deliverability Verification**: Administrators can dispatch a live test email at any time via `POST /api/v1/notifications/test-email` and inspect recent test sends via `GET /api/v1/notifications/test-email-history`.
+
+### Gmail API Sending Quotas & Enterprise Scale
+- **Personal Gmail Accounts**: Capped by Google at **~500 recipients per day** across API and SMTP dispatch.
+- **Google Workspace Accounts**: Capped at **2,000 recipients per day** (or 10,000 with multi-user relays).
+- **Institutional Broadcast Advisory**: Because AcademiaSync supports campus-wide announcements (`POST /api/v1/notifications/broadcast`) that can message hundreds of faculty members simultaneously, administrators using personal Gmail accounts should be aware of this daily ceiling. For large universities exceeding 500 recipients/day, configure Google Workspace credentials or integrate transactional email services (**Resend**, **SendGrid**, or **Amazon SES**).
 
 #### Diagnostic Endpoint Contract: `POST /api/v1/notifications/test-email`
 ```json
@@ -303,10 +316,15 @@ AcademiaSync routes all outbound email over **HTTPS (Port 443)** using the offic
   "mode": "gmail_api",
   "isLiveDelivery": true,
   "messageId": "18f0a3b89c7d12e4",
+  "previewUrl": null,
+  "error": null,
   "warning": null
 }
 ```
-*(If the system is running without OAuth2 credentials, `isLiveDelivery` returns `false` with a descriptive `warning` stating that the email was logged to the console).*
+*(If the system is running without OAuth2 credentials, `mode` reports `"mock_logger"`, `isLiveDelivery` returns `false`, and `warning` contains an actionable string advising administrators to configure credentials).*
+
+#### Diagnostic History Contract: `GET /api/v1/notifications/test-email-history`
+Returns an in-memory audit trail of the last 20 diagnostic email executions (including timestamps, recipients, transport modes, message IDs, and error/warning details) to streamline production verification without requiring direct access to server console logs.
 
 ---
 
@@ -358,7 +376,7 @@ Accessible by authenticated users across designated roles:
 | `/profile` | `ProfilePage` | Detailed view of user's academic profile, qualifications, research citations, and completeness score. |
 | `/profile/edit` | `EditProfilePage` | Form for updating educational degrees, publications, patents, research areas, and bio. |
 | `/notifications` | `NotificationsPage` | Dedicated inbox with *Inbox*, *Unread*, and *Archived* tabs, bulk actions, and Admin Broadcast Modal. |
-| `/certificates` | `MyCertificatesPage` | Displays certificates earned by the faculty member. Renders certificates client-side via high-resolution print/PDF engine (`window.print()`) and provides public verification links. |
+| `/certificates` | `MyCertificatesPage` | Displays certificates earned by the faculty member. Renders a print-optimized certificate view via the browser's native print dialog (`window.print()`), which users can save as PDF, and provides public verification links. |
 | `/reports` | `ReportsPage` | Role-scoped institutional analytics, training completion rates, and NAAC compliance metrics. |
 
 ### Training & LMS Pages
@@ -409,13 +427,13 @@ All backend API routes are versioned and mounted under the `/api/v1` prefix:
 | `/api/v1/departments` | Department Management | Department CRUD, HOD assignments, active status controls |
 | `/api/v1/subjects` | Subject Catalog | Subject CRUD, code validation, department linkage |
 | `/api/v1/profiles` | Faculty Profiles | Profile completeness score, qualifications, research citations, patents |
-| `/api/v1/training` | Unified Training & LMS Router | Mounted via `trainingRoutes.ts` (delegates across `trainingController`, `lmsController`, and `sessionController` for programs, enrollments, approvals, LMS modules, session attendance, course tests, and grading) |
-| `/api/v1/certificates` | Certificate Management | `/verify/:token` (zero-auth public verification), `/mine` (earned certificates list), `/:id/revoke` (administrative revocation). *(Note: Issuance occurs in `/training`, and PDF generation is handled client-side)* |
+| `/api/v1/training` | Unified Training & LMS Router | Mounted via `trainingRoutes.ts` (delegates across `trainingController.ts`, `lmsController.ts`, and `sessionController.ts` for programs, enrollments, approvals, LMS modules, session attendance, course tests, and grading) |
+| `/api/v1/certificates` | Certificate Management | `/verify/:token` (zero-auth public verification), `/mine` (earned certificates list), `/:id/revoke` (administrative revocation). *(Note: Issuance occurs in `/training`, and certificate views are rendered client-side)* |
 | `/api/v1/competency` | Competency Mapping | Faculty skill matrices, targets, and departmental gap analysis |
 | `/api/v1/appraisals` | Appraisal Cycles | Cycle creation, self-appraisals, HOD reviews, Dean scores, and approvals |
 | `/api/v1/assessments` | Custom Assessment Engine | Dynamic surveys/tests, question banks, timed submissions, grading, CSV exports |
 | `/api/v1/recommendations` | Development Recommendations | Multi-faculty training assignments, status tracking, compliance enforcement |
-| `/api/v1/notifications` | Notifications & Broadcasts | `/mine`, `/mark-all-read`, `/:id/archive`, `/:id`, `/broadcast` (mass notice), `/test-email` (admin diagnostic) |
+| `/api/v1/notifications` | Notifications & Broadcasts | `/mine`, `/mark-all-read`, `/:id/archive`, `/:id`, `/broadcast` (mass notice), `/test-email` (admin diagnostic), `/test-email-history` (diagnostic audit trail) |
 | `/api/v1/notices` | University Circulars | `/public` (zero-auth public circulars), protected admin/dean management CRUD |
 | `/api/v1/reports` | Institutional Analytics | Dashboard metric rollups, accreditation exports, compliance rates |
 | `/api/v1/audit` | Security Audit Logs | Non-repudiable audit trails across all administrative actions |
@@ -474,16 +492,19 @@ The frontend includes `frontend/my-app/vercel.json` for SPA HTML5 client-side ro
 ## Testing & Verification
 
 ### Automated Pipeline Test Suite (`npm test`)
-The test command (`npm test`) runs `backend/src/verify_pipeline.ts` via `ts-node`. It validates 8 comprehensive verification suites containing **59 automated assertions**:
+The test command (`npm test`) runs `backend/src/verify_pipeline.ts` via `ts-node`. It validates 8 comprehensive verification suites containing **59 automated assertions** (0 failed):
 
-1. **Startup Environment Validation**: Checks that `JWT_SECRET` is &ge;32 characters, `URL_ENC_KEY` is a 64-hex character string, and database connection URIs exist.
-2. **AES-256-GCM Cryptographic Token Integrity**: Confirms URL-safe token serialization, decryption of certificate IDs and serial numbers, and rejection of tampered tokens.
-3. **Sliding-Window Rate Limiter**: Tests that request quotas are enforced, headers are populated, and subsequent calls receive HTTP 429 status.
-4. **Mongoose Models & Schema Logic**: Verifies certificate validity virtuals, course result schemas, and SHA-256 refresh token persistence.
-5. **Atomic Reservation Logic**: Tests enrollment cooldowns and attempt limits.
-6. **Session Family Compromise Defense**: Validates that replaying a revoked refresh token immediately invalidates the entire token family across all user sessions and logs a security audit event.
-7. **Email Templating & Delivery Fallback**: Tests interpolation of all institutional templates, verifies transport mode resolution, confirms structured error returns without crashing, and verifies `mock_logger` mode execution.
-8. **Attendance Eligibility Logic**: Tests that attendance thresholds correctly derive certificate eligibility.
+| Suite | Description | Assertions Verified | Count |
+| :--- | :--- | :--- | :---: |
+| **1. Startup Environment Validation** | Validates `JWT_SECRET` length (&ge;32 chars), `URL_ENC_KEY` (64-char hex / 32-byte entropy), and database URI existence | 3 | **3** |
+| **2. AES-256-GCM URL Tokenization** | URL-safe serialization, payload decryption (certificate ID, serial number), authenticated tag tamper rejection, and expiration rejection | 5 | **5** |
+| **3. Sliding-Window Rate Limiter** | Quota allowance (first 3 requests), header decrementing (`RateLimit-Remaining: 0`), 4th request 429 block, and middleware short-circuiting | 4 | **4** |
+| **4. Mongoose Schemas & Derived Validity** | Active certificate `isValid` virtual (true), expired certificate (false), revoked certificate (false), CourseResult passing status, and SHA-256 refresh token hashing | 5 | **5** |
+| **5. Atomic Reservation & Cooldown Logic** | Fresh enrollment attempt eligibility, certified blocking, attempt limit cap (3/3), 24h failure cooldown blocking, and cooldown expiry recovery | 5 | **5** |
+| **6. Token Reuse Defense & Family Revocation** | Validates the compromise defense handler from `authController.ts`: replaying a revoked token returns HTTP 401, flags reuse detection, invalidates all tokens in the user's token family (including concurrent active mobile/desktop sessions), and logs an institutional audit event | 5 | **5** |
+| **7. Email Templating & Delivery Fallback** | Interpolation of recipient names, subject tokens, and institutional branding across all 7 email templates (21 assertions), valid transport mode resolution, non-throwing return contract, and `mock_logger` success verification | 21 + 3 | **24** |
+| **8. Attendance Eligibility Logic** | Training session schema, default scheduled status, roster initialization, attendee attendance states, cancelled session exclusion, full attendance certificate qualification, and partial attendance non-qualification | 8 | **8** |
+| **TOTAL** | **8 Automated Test Suites** | **Complete Pipeline Verification** | **59/59** |
 
 Run from `backend/`:
 
@@ -498,8 +519,6 @@ Expected output:
 TEST SUMMARY: 59 PASSED, 0 FAILED
 ====================================================
 ```
-
-*(Note: 59 assertions are verified; test 7 includes dual assertions ensuring that `sendEmail()` returns a structured SendEmailResult without throwing uncaught exceptions, and returns `success: true` in mock logger mode).*
 
 ### Concurrency & Security Tests
 Verify database transaction locking, race conditions, and reservation isolation against a live MongoDB instance:

@@ -268,7 +268,18 @@ export const NotificationsPage: React.FC = () => {
                     Due: {new Date(notif.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </div>
                 )}
-                <div className="text-[10px] text-slate-400 mt-1">{timeAgo(notif.createdAt)}</div>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <span className="text-[10px] text-slate-400">{timeAgo(notif.createdAt)}</span>
+                  {notif.emailStatus && notif.emailStatus !== 'skipped' && (
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
+                      notif.emailStatus === 'sent'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-rose-50 text-rose-700 border border-rose-200'
+                    }`}>
+                      ✉️ Email {notif.emailStatus}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Actions */}
@@ -368,17 +379,24 @@ export const NotificationsPage: React.FC = () => {
               />
             </FormField>
 
-            <div className="flex items-center gap-2.5 p-3 rounded-xl bg-blue-50/50 border border-blue-100">
-              <input
-                type="checkbox"
-                id="broadcastSendEmail"
-                checked={broadcastSendEmail}
-                onChange={e => setBroadcastSendEmail(e.target.checked)}
-                className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
-              />
-              <label htmlFor="broadcastSendEmail" className="text-xs font-semibold text-slate-700 cursor-pointer select-none">
-                Also send this announcement as an official email to all recipients
-              </label>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2.5 p-3 rounded-xl bg-blue-50/50 border border-blue-100">
+                <input
+                  type="checkbox"
+                  id="broadcastSendEmail"
+                  checked={broadcastSendEmail}
+                  onChange={e => setBroadcastSendEmail(e.target.checked)}
+                  className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
+                />
+                <label htmlFor="broadcastSendEmail" className="text-xs font-semibold text-slate-700 cursor-pointer select-none">
+                  Also send this announcement as an official email to all recipients
+                </label>
+              </div>
+              {broadcastSendEmail && (
+                <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800 leading-relaxed">
+                  <strong>Quota Advisory:</strong> Standard personal Gmail API accounts have a ~500 recipients/day ceiling. For institution-wide broadcasts with larger faculties, ensure Google Workspace (2,000/day) or a transactional provider (Resend/SendGrid) is configured.
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">

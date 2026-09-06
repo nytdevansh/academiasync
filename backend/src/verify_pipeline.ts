@@ -32,7 +32,7 @@ async function runTests() {
   }
 
   // ── TEST 1: Startup Environment Validation ──
-  console.log('[1/5] Testing Startup Environment Validation...');
+  console.log('[1/8] Testing Startup Environment Validation...');
   try {
     if (!process.env.MONGO_URI && !process.env.MONGODB_ATLAS_URI) {
       process.env.MONGO_URI = 'mongodb://localhost:27017/academiasync';
@@ -46,7 +46,7 @@ async function runTests() {
   }
 
   // ── TEST 2: AES-256-GCM URL Token Encryption & Tamper Proofing ──
-  console.log('\n[2/5] Testing AES-256-GCM URL Token Encryption & Tamper Proofing...');
+  console.log('\n[2/8] Testing AES-256-GCM URL Token Encryption & Tamper Proofing...');
   try {
     const payload = {
       certificateId: '507f1f77bcf86cd799439011',
@@ -87,7 +87,7 @@ async function runTests() {
   }
 
   // ── TEST 3: Sliding Window Rate Limiter ──
-  console.log('\n[3/5] Testing In-Memory Sliding Window Rate Limiter...');
+  console.log('\n[3/8] Testing In-Memory Sliding Window Rate Limiter...');
   try {
     const limiter = createRateLimiter({
       windowMs: 1000,
@@ -130,7 +130,7 @@ async function runTests() {
   }
 
   // ── TEST 4: Model Schemas & Virtual Validity Verification ──
-  console.log('\n[4/5] Testing Model Schemas, Indexes & Derived Validity...');
+  console.log('\n[4/8] Testing Model Schemas, Indexes & Derived Validity...');
   try {
     // Check Certificate virtual isValid
     const validCert = new Certificate({
@@ -210,7 +210,7 @@ async function runTests() {
   }
 
   // ── TEST 5: Cooldown & Reservation Logic Verification ──
-  console.log('\n[5/5] Testing Atomic Reservation Query Logic...');
+  console.log('\n[5/8] Testing Atomic Reservation Query Logic...');
   try {
     const maxAttempts = 3;
     const cooldownHours = 24;
@@ -249,7 +249,7 @@ async function runTests() {
   }
 
   // ── TEST 6: Token Reuse Detection & Compromise Defense ──
-  console.log('\n[6/6] Testing Refresh Token Reuse Detection & Session Family Invalidation...');
+  console.log('\n[6/8] Testing Refresh Token Reuse Detection & Session Family Invalidation...');
   try {
     const userId = '507f1f77bcf86cd799439011';
     const rawTokenA = 'refresh_token_laptop_001';
