@@ -71,8 +71,29 @@ export const notify = async ({
   // 2. Email Notification Channel
   if (channels.includes('email') && emailData) {
     try {
-      const recipient = await User.findById(userId).select('name email');
+      const recipient = await User.findById(userId).select('name email emailPreferences');
       if (recipient?.email) {
+        // Check recipient email preference opt-out
+        const categoryKey = (type === 'training' || type === 'deadline' || type === 'renewal')
+          ? 'training'
+          : (type === 'appraisal')
+          ? 'appraisal'
+          : (type === 'system')
+          ? 'system'
+          : 'broadcasts';
+
+        if (recipient.emailPreferences && (recipient.emailPreferences as any)[categoryKey] === false) {
+          if (notificationId) {
+            await Notification.findByIdAndUpdate(notificationId, { emailStatus: 'skipped' });
+          }
+          return {
+            inAppSuccess,
+            emailSuccess: false,
+            notificationId,
+            previewUrl: undefined,
+          };
+        }
+
         const mergedVariables: Record<string, string | number> = {
           recipientName: recipient.name || 'Faculty Member',
           title,

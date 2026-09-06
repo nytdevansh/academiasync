@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Clock,
   CheckCircle2,
@@ -28,6 +28,8 @@ import type { Assessment, AssessmentResponse } from '../../types';
 export const TakeAssessmentPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isResultsRoute = location.pathname.endsWith('/results');
 
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,6 +54,15 @@ export const TakeAssessmentPage: React.FC = () => {
         if (res.success && res.data) {
           const assess = res.data;
           setAssessment(assess);
+
+          // Direct results view mode
+          if (isResultsRoute) {
+            if (assess.myResponses && assess.myResponses.length > 0) {
+              setSubmittedResult(assess.myResponses[0]);
+            }
+            setLoading(false);
+            return;
+          }
 
           // Check if faculty already completed this assessment
           if (assess.myResponses && assess.myResponses.length > 0) {
@@ -93,7 +104,7 @@ export const TakeAssessmentPage: React.FC = () => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [id, navigate]);
+  }, [id, navigate, isResultsRoute]);
 
   // Live Timer Countdown
   useEffect(() => {
@@ -174,8 +185,32 @@ export const TakeAssessmentPage: React.FC = () => {
     performSubmission();
   };
 
-  if (loading) return <LoadingSpinner text="Preparing assessment session..." />;
+  if (loading) return <LoadingSpinner text={isResultsRoute ? "Loading evaluation records..." : "Preparing assessment session..."} />;
   if (!assessment) return null;
+
+  if (isResultsRoute && !submittedResult) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6 animate-fadeIn py-12">
+        <Card className="p-8 text-center space-y-4">
+          <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+            <HelpCircle className="w-6 h-6" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">No Assessment Record Found</h2>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            You have not submitted a response for "{assessment.title}" yet. Take the assessment to generate an evaluation scorecard and record.
+          </p>
+          <div className="flex justify-center gap-3 pt-2">
+            <Button variant="outline" onClick={() => navigate('/assessments')}>
+              Back to Assessments
+            </Button>
+            <Button variant="primary" onClick={() => navigate(`/assessments/${id}/take`)}>
+              Start Assessment Now
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   // ── Render Results View ──────────────────────────────────────────────────────
   if (submittedResult) {

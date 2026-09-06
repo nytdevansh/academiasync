@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import {
   Bell, Check, CheckCheck, Archive, Trash2, Inbox, Clock,
-  Award, BookOpen, ClipboardList, RefreshCw, Send, Plus, Megaphone
+  Award, BookOpen, ClipboardList, RefreshCw, Send, Plus, Megaphone,
+  Activity, CheckCircle2, AlertCircle, ShieldCheck
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -13,7 +14,8 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { Pagination } from '../../components/ui/Pagination';
 import {
   getMyNotifications, markAsRead, markAllRead,
-  archiveNotification, deleteNotification, broadcastNotification
+  archiveNotification, deleteNotification, broadcastNotification,
+  sendTestEmail, getTestEmailHistory, type DiagnosticLog
 } from '../../api/notifications';
 import { useAuth } from '../../context/AuthContext';
 import type { AppNotification } from '../../types';
@@ -72,6 +74,45 @@ export const NotificationsPage: React.FC = () => {
   const [broadcastSendEmail, setBroadcastSendEmail] = useState(false);
   const [broadcasting, setBroadcasting] = useState(false);
   const [broadcastStatus, setBroadcastStatus] = useState<string | null>(null);
+
+  // Diagnostics State (Admin only)
+  const [showDiagModal, setShowDiagModal] = useState(false);
+  const [diagEmail, setDiagEmail] = useState(user?.email || '');
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [diagResult, setDiagResult] = useState<DiagnosticLog | null>(null);
+  const [diagHistory, setDiagHistory] = useState<DiagnosticLog[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const loadDiagHistory = async () => {
+    try {
+      setLoadingHistory(true);
+      const res = await getTestEmailHistory();
+      if (res.success && res.data) {
+        setDiagHistory(res.data);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleSendTestEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTestingEmail(true);
+    setDiagResult(null);
+    try {
+      const res = await sendTestEmail(diagEmail);
+      if (res.data) {
+        setDiagResult(res.data);
+        loadDiagHistory();
+      }
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'Diagnostic test send failed');
+    } finally {
+      setTestingEmail(false);
+    }
+  };
 
   const loadNotifications = async () => {
     try {
@@ -192,6 +233,19 @@ export const NotificationsPage: React.FC = () => {
               onClick={() => setShowBroadcastModal(true)}
             >
               Broadcast Notice
+            </Button>
+          )}
+          {user?.role === 'administrator' && (
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<Activity className="w-3.5 h-3.5 text-blue-600" />}
+              onClick={() => {
+                setShowDiagModal(true);
+                loadDiagHistory();
+              }}
+            >
+              Email Diagnostics
             </Button>
           )}
           <Button variant="outline" size="sm" icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={loadNotifications}>
@@ -408,6 +462,146 @@ export const NotificationsPage: React.FC = () => {
               </Button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* Email Diagnostics Modal (Administrator Only) */}
+      {showDiagModal && (
+        <Modal
+          open={showDiagModal}
+          onClose={() => setShowDiagModal(false)}
+          title="Email Transport Diagnostics & Verification"
+          size="lg"
+        >
+          <div className="space-y-6">
+            <p className="text-xs text-slate-500">
+              Trigger a real-time email dispatch to verify outbound OAuth2 Gmail API transport, token validity, and inspect recent delivery audit logs.
+            </p>
+
+            {/* Test Send Form */}
+            <form onSubmit={handleSendTestEmail} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Dispatch Test Email</h3>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="email"
+                  required
+                  value={diagEmail}
+                  onChange={e => setDiagEmail(e.target.value)}
+                  placeholder="admin@university.edu"
+                  className="flex-1 px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                />
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  loading={testingEmail}
+                  icon={<Send className="w-3.5 h-3.5" />}
+                >
+                  Send Test Email
+                </Button>
+              </div>
+            </form>
+
+            {/* Test Result Display */}
+            {diagResult && (
+              <div className={`p-4 rounded-xl border ${diagResult.success ? 'bg-emerald-50/70 border-emerald-200' : 'bg-rose-50/70 border-rose-200'} space-y-2`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {diagResult.success ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-rose-600" />
+                    )}
+                    <span className="text-xs font-bold text-slate-900">
+                      {diagResult.success ? 'Diagnostic Dispatch Succeeded' : 'Diagnostic Dispatch Failed'}
+                    </span>
+                  </div>
+                  <Badge variant={diagResult.isLiveDelivery ? 'success' : 'warning'}>
+                    {diagResult.mode}
+                  </Badge>
+                </div>
+
+                {diagResult.messageId && (
+                  <p className="text-[11px] font-mono text-slate-600 break-all">
+                    Message ID: {diagResult.messageId}
+                  </p>
+                )}
+
+                {diagResult.warning && (
+                  <p className="text-[11px] text-amber-800 bg-amber-100/50 p-2 rounded border border-amber-200">
+                    {diagResult.warning}
+                  </p>
+                )}
+
+                {diagResult.error && (
+                  <p className="text-[11px] text-rose-800 bg-rose-100/50 p-2 rounded border border-rose-200 font-mono">
+                    {diagResult.error}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Diagnostics History */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-blue-600" /> Recent Diagnostic Dispatches ({diagHistory.length})
+                </h3>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  loading={loadingHistory}
+                  icon={<RefreshCw className="w-3 h-3" />}
+                  onClick={loadDiagHistory}
+                >
+                  Refresh
+                </Button>
+              </div>
+
+              {loadingHistory && diagHistory.length === 0 ? (
+                <div className="py-6 flex justify-center">
+                  <LoadingSpinner size="sm" />
+                </div>
+              ) : diagHistory.length === 0 ? (
+                <div className="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
+                  No diagnostic emails dispatched yet in this session.
+                </div>
+              ) : (
+                <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                  {diagHistory.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="p-2.5 rounded-lg border border-slate-200 bg-white hover:border-slate-300 transition-colors flex items-center justify-between text-xs gap-2"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant={entry.success ? 'success' : 'danger'}>
+                            {entry.success ? 'Delivered' : 'Failed'}
+                          </Badge>
+                          <span className="font-semibold text-slate-800 truncate">{entry.recipient}</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} • Mode: {entry.mode}
+                        </p>
+                      </div>
+                      {entry.messageId && (
+                        <span className="text-[10px] font-mono text-slate-500 max-w-[120px] truncate" title={entry.messageId}>
+                          {entry.messageId}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-200">
+              <Button type="button" variant="outline" onClick={() => setShowDiagModal(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>

@@ -36,3 +36,8 @@ export const resetUserPassword = async (id: string, newPassword: string): Promis
   const { data } = await axiosInstance.put(`/users/${id}/reset-password`, { newPassword });
   return data;
 };
+
+export const revokeUserSessions = async (id: string): Promise<ApiResponse<{ message: string; revokedCount: number }>> => {
+  const { data } = await axiosInstance.post(`/users/${id}/revoke-sessions`);
+  return data;
+};

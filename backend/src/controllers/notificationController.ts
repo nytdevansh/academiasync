@@ -194,6 +194,7 @@ export const testEmailDispatch = async (req: AuthRequest, res: Response): Promis
 
     res.json({
       success: result.success,
+      data: logEntry,
       mode: verification.mode,
       isLiveDelivery: verification.mode !== 'mock_logger',
       messageId: result.messageId || null,

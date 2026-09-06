@@ -7,6 +7,7 @@ import { FormField } from '../../components/ui/FormField';
 import { Badge } from '../../components/ui/Badge';
 import { useAuth } from '../../context/AuthContext';
 import { getMyProfile, updateMyProfile } from '../../api/profiles';
+import { updateEmailPreferences } from '../../api/auth';
 
 export const EditProfilePage: React.FC = () => {
   const { user } = useAuth();
@@ -19,6 +20,23 @@ export const EditProfilePage: React.FC = () => {
   const [researchAreasInput, setResearchAreasInput] = useState('');
   const [qualifications, setQualifications] = useState<any[]>([]);
   const [newQual, setNewQual] = useState({ degree: '', specialization: '', institution: '', year: '' });
+  const [emailPrefs, setEmailPrefs] = useState({
+    training: true,
+    appraisal: true,
+    broadcasts: true,
+    system: true,
+  });
+
+  useEffect(() => {
+    if (user?.emailPreferences) {
+      setEmailPrefs({
+        training: user.emailPreferences.training !== false,
+        appraisal: user.emailPreferences.appraisal !== false,
+        broadcasts: user.emailPreferences.broadcasts !== false,
+        system: user.emailPreferences.system !== false,
+      });
+    }
+  }, [user]);
 
   useEffect(() => {
     getMyProfile().then(r => {
@@ -38,7 +56,6 @@ export const EditProfilePage: React.FC = () => {
     }).finally(() => setLoading(false));
   }, []);
 
-
   const handleAddQualification = () => {
     if (!newQual.degree || !newQual.institution) return;
     setQualifications([...qualifications, { ...newQual, year: Number(newQual.year) || new Date().getFullYear() }]);
@@ -54,11 +71,14 @@ export const EditProfilePage: React.FC = () => {
     setSaving(true);
     try {
       const areas = researchAreasInput.split(',').map(s => s.trim()).filter(Boolean);
-      await updateMyProfile({
-        bio,
-        researchAreas: areas,
-        qualifications,
-      } as any);
+      await Promise.all([
+        updateMyProfile({
+          bio,
+          researchAreas: areas,
+          qualifications,
+        } as any),
+        updateEmailPreferences(emailPrefs),
+      ]);
       setSuccess(true);
       setTimeout(() => navigate('/profile'), 1000);
     } catch {
@@ -172,6 +192,75 @@ export const EditProfilePage: React.FC = () => {
             <Button type="button" variant="secondary" size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={handleAddQualification}>
               Add Qualification
             </Button>
+          </div>
+        </Card>
+
+        {/* Email & Notification Preferences */}
+        <Card className="space-y-4 p-6">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Email Notification Preferences</h3>
+              <p className="text-xs text-slate-500">Configure which official institutional notifications dispatch email alerts to {user?.email}</p>
+            </div>
+            <Badge variant="blue">Recipient Opt-In / Opt-Out</Badge>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <div className="flex items-start gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+              <input
+                type="checkbox"
+                id="prefTraining"
+                checked={emailPrefs.training}
+                onChange={e => setEmailPrefs(p => ({ ...p, training: e.target.checked }))}
+                className="mt-0.5 w-4 h-4 accent-blue-600 rounded cursor-pointer"
+              />
+              <label htmlFor="prefTraining" className="text-xs cursor-pointer select-none">
+                <div className="font-bold text-slate-800">Training &amp; LMS Updates</div>
+                <div className="text-slate-500 text-[11px] mt-0.5">Nominations, approvals, attendance reminders, and certificates.</div>
+              </label>
+            </div>
+
+            <div className="flex items-start gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+              <input
+                type="checkbox"
+                id="prefAppraisal"
+                checked={emailPrefs.appraisal}
+                onChange={e => setEmailPrefs(p => ({ ...p, appraisal: e.target.checked }))}
+                className="mt-0.5 w-4 h-4 accent-blue-600 rounded cursor-pointer"
+              />
+              <label htmlFor="prefAppraisal" className="text-xs cursor-pointer select-none">
+                <div className="font-bold text-slate-800">Annual Appraisals</div>
+                <div className="text-slate-500 text-[11px] mt-0.5">Review deadlines, HOD evaluations, and committee recommendations.</div>
+              </label>
+            </div>
+
+            <div className="flex items-start gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+              <input
+                type="checkbox"
+                id="prefBroadcasts"
+                checked={emailPrefs.broadcasts}
+                onChange={e => setEmailPrefs(p => ({ ...p, broadcasts: e.target.checked }))}
+                className="mt-0.5 w-4 h-4 accent-blue-600 rounded cursor-pointer"
+              />
+              <label htmlFor="prefBroadcasts" className="text-xs cursor-pointer select-none">
+                <div className="font-bold text-slate-800">Campus Broadcasts</div>
+                <div className="text-slate-500 text-[11px] mt-0.5">Dean &amp; Admin campus notices, circulars, and official orders.</div>
+              </label>
+            </div>
+
+            <div className="flex items-start gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+              <input
+                type="checkbox"
+                id="prefSystem"
+                checked={emailPrefs.system}
+                onChange={e => setEmailPrefs(p => ({ ...p, system: e.target.checked }))}
+                className="mt-0.5 w-4 h-4 accent-blue-600 rounded cursor-pointer"
+              />
+              <label htmlFor="prefSystem" className="text-xs cursor-pointer select-none">
+                <div className="font-bold text-slate-800">System &amp; Security Alerts</div>
+                <div className="text-slate-500 text-[11px] mt-0.5">Password resets, session revocation alerts, and critical updates.</div>
+              </label>
+            </div>
           </div>
         </Card>
 

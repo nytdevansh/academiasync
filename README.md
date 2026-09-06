@@ -361,7 +361,7 @@ Accessible without signing in:
 | `/faculty` | `FacultyDirectoryPage` | Public directory of professors, researchers, designations, and departmental labs. |
 | `/departments` | `DepartmentsPage` | Academic departments, subjects offered, and faculty rosters. |
 | `/students` | `StudentsPage` | Student resources, campus portals, and grievance cell information. |
-| `/notices` | `NoticesPage` | MongoDB-backed official circulars with category filtering, search, and date formatting. |
+| `/notices` | `NoticesPage` | MongoDB-backed public official circulars viewer with category filtering, search, and date formatting; plus authenticated modal for **Administrators and Deans** to publish circulars and deactivate entries. |
 | `/contact` | `ContactPage` | Departmental contact directory and automated inquiry ticketing form. |
 | `/privacy` | `PrivacyPolicyPage` | Institutional data protection policy, DPDP/FERPA compliance, certificate privacy isolation, and DPO contacts. |
 | `/terms` | `TermsOfServicePage` | Academic integrity rules, credential security, IP ownership, certificate revocation, and usage guidelines. |
@@ -374,8 +374,8 @@ Accessible by authenticated users across designated roles:
 | :--- | :--- | :--- |
 | `/dashboard` | `DashboardPage` | Role-tailored dashboards (`FacultyDashboard`, `HODDashboard`, `DeanDashboard`, `HRDashboard`, `AdminDashboard`). |
 | `/profile` | `ProfilePage` | Detailed view of user's academic profile, qualifications, research citations, and completeness score. |
-| `/profile/edit` | `EditProfilePage` | Form for updating educational degrees, publications, patents, research areas, and bio. |
-| `/notifications` | `NotificationsPage` | Dedicated inbox with *Inbox*, *Unread*, and *Archived* tabs, bulk actions, and Admin Broadcast Modal. |
+| `/profile/edit` | `EditProfilePage` | Form for updating educational degrees, publications, patents, research areas, bio, and **faculty email notification preferences** (training, appraisal, broadcasts, system alerts). |
+| `/notifications` | `NotificationsPage` | Dedicated inbox with *Inbox*, *Unread*, and *Archived* tabs, bulk actions, Admin/Dean Broadcast Modal, and **Administrator Email Diagnostics console** (`POST /test-email` trigger & `GET /test-email-history` live viewer). |
 | `/certificates` | `MyCertificatesPage` | Displays certificates earned by the faculty member. Renders a print-optimized certificate view via the browser's native print dialog (`window.print()`), which users can save as PDF, and provides public verification links. |
 | `/reports` | `ReportsPage` | Role-scoped institutional analytics, training completion rates, and NAAC compliance metrics. |
 
@@ -395,8 +395,8 @@ Accessible by authenticated users across designated roles:
 | Route | Page Component | Responsibility |
 | :--- | :--- | :--- |
 | `/assessments` | `AssessmentListPage` | List of assigned institutional surveys, competency tests, templates, and past submissions. |
-| `/assessments/:id/take` | `TakeAssessmentPage` | Timed assessment execution interface with auto-save and submission validation. |
-| `/assessments/:id/results` | `TakeAssessmentPage` | Detailed scorecard with feedback, correct answers, and score breakdowns. |
+| `/assessments/:id/take` | `TakeAssessmentPage` | Timed assessment execution interface with real-time countdown timer, progress bar, auto-save, and submission validation. |
+| `/assessments/:id/results` | `TakeAssessmentPage` | Dual-mode evaluation scorecard rendering submitted answers, points earned, correct answer keys, and reviewer notes without initiating a new attempt. |
 | `/assessments/:id/analytics` | `AssessmentAnalyticsPage` | Aggregate performance charts, submission distributions, CSV exports, and manual question grading. |
 | `/competency` | `CompetencyPage` | Radar charts and level metrics across core academic and technical skills. |
 | `/competency/gap-analysis` | `DepartmentGapAnalysisPage` | Departmental skill deficiency analysis and automated development recommendations. |
@@ -410,9 +410,51 @@ Accessible by authenticated users across designated roles:
 
 | Route | Page Component | Responsibility |
 | :--- | :--- | :--- |
-| `/admin/users` | `UserManagementPage` | Account creation, role modification, suspension, session termination, password resets, and user filtering. |
+| `/admin/users` | `UserManagementPage` | Account creation, role modification, suspension, instant **token family session revocation** (`POST /api/v1/users/:id/revoke-sessions`), password resets, and user filtering. |
 | `/admin/departments` | `DepartmentManagementPage` | Department creation, HOD assignment, and academic unit status toggling. |
 | `/admin/audit` | `AuditLogPage` | Immutable audit log viewer with filtering by actor, action type, IP address, and date range. |
+
+---
+
+## RBAC Role × Page Access Matrix
+
+The following matrix documents institutional access across the 5 authenticated user roles and public/anonymous visitors across all platform routes:
+
+| Route | Public / Anon | Faculty (`faculty_member`) | HOD (`hod`) | Dean (`dean`) | HR (`hr`) | Admin (`administrator`) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| `/`, `/academics`, `/faculty`, `/students`, `/departments`, `/contact`, `/privacy`, `/terms` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/notices` (Public Viewer) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/notices` (Publish / Deactivate Modal) | :x: | :x: | :x: | :white_check_mark: | :x: | :white_check_mark: |
+| `/verify/:token` (Cryptographic Verification) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/login` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/dashboard` | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/profile`, `/profile/edit` (Email Preferences) | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/notifications` (Inbox & History) | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/notifications` (Broadcast Dispatch) | :x: | :x: | :x: | :white_check_mark: | :x: | :white_check_mark: |
+| `/notifications` (Email Diagnostics Console) | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
+| `/certificates` (Earned Records & PDF) | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/training/catalog` | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/training/my-enrollments` | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/training/programs/:id/sessions` | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/training/sessions/:sessionId` | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/training/:id/learn` | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/training/grading` | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: | :white_check_mark: |
+| `/training/approvals` | :x: | :x: | :white_check_mark: | :white_check_mark: | :x: | :white_check_mark: |
+| `/assessments` | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/assessments/:id/take` | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/assessments/:id/results` | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/assessments/:id/analytics` | :x: | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/competency` | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/competency/gap-analysis` | :x: | :x: | :white_check_mark: | :white_check_mark: | :x: | :white_check_mark: |
+| `/appraisals` | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/appraisals/department` | :x: | :x: | :white_check_mark: | :white_check_mark: | :x: | :white_check_mark: |
+| `/appraisals/cycles` | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
+| `/curriculum/subjects` | :x: | :x: | :white_check_mark: | :white_check_mark: | :x: | :white_check_mark: |
+| `/recommendations` | :x: | :x: | :white_check_mark: | :white_check_mark: | :x: | :white_check_mark: |
+| `/reports` | :x: | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `/admin/users` (inc. Session Revocation) | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
+| `/admin/departments` | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
+| `/admin/audit` | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
 
 ---
 
@@ -422,7 +464,7 @@ All backend API routes are versioned and mounted under the `/api/v1` prefix:
 
 | API Base Path | Description | Key Capabilities |
 | :--- | :--- | :--- |
-| `/api/v1/auth` | Authentication & Sessions | `/login`, `/register`, `/me`, `/refresh-token`, `/logout`, `/inquiry` |
+| `/api/v1/auth` | Authentication & Sessions | `/login`, `/register`, `/me`, `/refresh-token`, `/logout`, `/inquiry`, `/preferences` (institutional email notification toggles) |
 | `/api/v1/users` | User Administration | User CRUD, role assignment, password resets, `/department/:deptId`, `/:id/revoke-sessions` |
 | `/api/v1/departments` | Department Management | Department CRUD, HOD assignments, active status controls |
 | `/api/v1/subjects` | Subject Catalog | Subject CRUD, code validation, department linkage |

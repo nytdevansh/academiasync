@@ -52,3 +52,10 @@ export const logout = async (token?: string): Promise<ApiResponse<Record<string,
   });
   return data;
 };
+
+export const updateEmailPreferences = async (
+  preferences: { training: boolean; appraisal: boolean; broadcasts: boolean; system: boolean }
+): Promise<ApiResponse<{ training: boolean; appraisal: boolean; broadcasts: boolean; system: boolean }>> => {
+  const { data } = await axiosInstance.put('/auth/preferences', preferences);
+  return data;
+};

@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, login, logout, getMe, refreshToken, submitContactInquiry } from '../controllers/authController';
+import { register, login, logout, getMe, refreshToken, submitContactInquiry, updateEmailPreferences } from '../controllers/authController';
 import { protect } from '../middlewares/auth';
 import { authLimiter } from '../middlewares/rateLimiter';
 import { validateRequest } from '../middlewares/validateRequest';
@@ -19,5 +19,6 @@ router.post('/refresh-token', authLimiter, validateRequest(refreshTokenSchema), 
 // Protected routes
 router.post('/logout', logout);
 router.get('/me', protect, getMe);
+router.put('/preferences', protect, updateEmailPreferences);
 
 export default router;

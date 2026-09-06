@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Filter,
   Sparkles,
+  ShieldOff,
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -27,7 +28,7 @@ import { FormField } from '../../components/ui/FormField';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Pagination } from '../../components/ui/Pagination';
-import { getAllUsers, createUser, updateUser, deleteUser, resetUserPassword } from '../../api/users';
+import { getAllUsers, createUser, updateUser, deleteUser, resetUserPassword, revokeUserSessions } from '../../api/users';
 import { getAllDepartments } from '../../api/departments';
 import { getAuditLogs } from '../../api/audit';
 import type { User, Department, AuditLog } from '../../types';
@@ -66,6 +67,29 @@ export const UserManagementPage: React.FC = () => {
   // Delete State
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Session Revocation State
+  const [revokeUser, setRevokeUser] = useState<User | null>(null);
+  const [revoking, setRevoking] = useState(false);
+  const [revokeFeedback, setRevokeFeedback] = useState<string | null>(null);
+
+  const handleRevokeSessions = async () => {
+    if (!revokeUser) return;
+    setRevoking(true);
+    try {
+      const res = await revokeUserSessions(revokeUser._id);
+      setRevokeFeedback(`Terminated all active sessions for ${revokeUser.name} (${res.data?.revokedCount ?? 1} session tokens invalidated).`);
+      setTimeout(() => {
+        setRevokeFeedback(null);
+        setRevokeUser(null);
+      }, 2000);
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'Failed to terminate user sessions');
+      setRevokeUser(null);
+    } finally {
+      setRevoking(false);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -310,6 +334,15 @@ export const UserManagementPage: React.FC = () => {
                           title="Reset temporary password"
                         >
                           Reset Pass
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={<ShieldOff className="w-3.5 h-3.5 text-orange-600" />}
+                          onClick={() => setRevokeUser(u)}
+                          title="Force logout all active sessions for this user"
+                        >
+                          Revoke Sessions
                         </Button>
                         <Button
                           variant="ghost"
@@ -590,6 +623,36 @@ export const UserManagementPage: React.FC = () => {
         <p className="text-xs text-slate-600 leading-relaxed">
           Are you sure you want to delete this user profile? All associated records will be permanently archived.
         </p>
+      </Modal>
+
+      {/* Session Revocation Modal */}
+      <Modal
+        open={!!revokeUser}
+        onClose={() => !revoking && setRevokeUser(null)}
+        title={`Terminate Active Sessions: ${revokeUser?.name || 'User'}`}
+        size="sm"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <Button variant="ghost" disabled={revoking} onClick={() => setRevokeUser(null)}>
+              Cancel
+            </Button>
+            <Button variant="danger" loading={revoking} onClick={handleRevokeSessions}>
+              Revoke All Sessions
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          {revokeFeedback ? (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-700 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" /> {revokeFeedback}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Are you sure you want to terminate all active sessions for <strong>{revokeUser?.name}</strong> ({revokeUser?.email})? All active refresh tokens across their devices will be immediately invalidated, forcing re-authentication on their next request.
+            </p>
+          )}
+        </div>
       </Modal>
     </div>
   );

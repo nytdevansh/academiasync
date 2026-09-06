@@ -37,3 +37,26 @@ export const broadcastNotification = async (payload: {
   const { data } = await axiosInstance.post('/notifications/broadcast', payload);
   return data;
 };
+
+export interface DiagnosticLog {
+  id: string;
+  timestamp: string;
+  recipient: string;
+  mode: string;
+  isLiveDelivery: boolean;
+  success: boolean;
+  messageId: string | null;
+  previewUrl: string | null;
+  error: string | null;
+  warning: string | null;
+}
+
+export const sendTestEmail = async (email?: string): Promise<ApiResponse<DiagnosticLog>> => {
+  const { data } = await axiosInstance.post('/notifications/test-email', { email });
+  return data;
+};
+
+export const getTestEmailHistory = async (): Promise<ApiResponse<DiagnosticLog[]>> => {
+  const { data } = await axiosInstance.get('/notifications/test-email-history');
+  return data;
+};

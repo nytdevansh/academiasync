@@ -35,6 +35,12 @@ export interface User {
   role: UserRole;
   department?: Department;
   status: 'active' | 'inactive' | 'suspended';
+  emailPreferences?: {
+    training: boolean;
+    appraisal: boolean;
+    broadcasts: boolean;
+    system: boolean;
+  };
   createdAt?: string;
 }
 

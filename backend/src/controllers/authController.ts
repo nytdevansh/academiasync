@@ -193,6 +193,27 @@ export const getMe = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const updateEmailPreferences = async (req: AuthRequest, res: Response) => {
+  try {
+    const { training, appraisal, broadcasts, system } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.user?._id,
+      {
+        emailPreferences: {
+          training: training !== false,
+          appraisal: appraisal !== false,
+          broadcasts: broadcasts !== false,
+          system: system !== false,
+        },
+      },
+      { new: true }
+    ).select('-passwordHash');
+    res.json({ success: true, data: user?.emailPreferences });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 /**
  * Validates the refresh token, detects replay/reuse attacks,
  * atomically rotates both the refresh token and access token.

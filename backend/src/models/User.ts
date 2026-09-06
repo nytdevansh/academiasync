@@ -7,6 +7,12 @@ export interface IUser extends Document {
   role: 'faculty_member' | 'hod' | 'dean' | 'hr' | 'administrator';
   department?: mongoose.Types.ObjectId;
   status: 'active' | 'inactive' | 'suspended';
+  emailPreferences?: {
+    training: boolean;
+    appraisal: boolean;
+    broadcasts: boolean;
+    system: boolean;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +32,12 @@ const userSchema = new Schema<IUser>(
       type: String,
       enum: ['active', 'inactive', 'suspended'],
       default: 'active',
+    },
+    emailPreferences: {
+      training: { type: Boolean, default: true },
+      appraisal: { type: Boolean, default: true },
+      broadcasts: { type: Boolean, default: true },
+      system: { type: Boolean, default: true },
     },
   },
   { timestamps: true }
