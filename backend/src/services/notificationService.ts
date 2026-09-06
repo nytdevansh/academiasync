@@ -90,11 +90,28 @@ export const notify = async ({
 
         emailSuccess = emailRes.success;
         previewUrl = emailRes.previewUrl;
+        if (!emailRes.success) {
+          console.error(`❌ [NotificationService] Email delivery failed for ${recipient.email}: ${emailRes.error}`);
+          return {
+            inAppSuccess,
+            emailSuccess: false,
+            notificationId,
+            previewUrl,
+            error: emailRes.error,
+          };
+        }
       } else {
         console.warn(`⚠️  [NotificationService] No email found for userId: ${userId}`);
       }
     } catch (err: any) {
       console.error('❌ [NotificationService] Failed to process email notification:', err?.message || err);
+      return {
+        inAppSuccess,
+        emailSuccess: false,
+        notificationId,
+        previewUrl,
+        error: err?.message,
+      };
     }
   }
 
@@ -105,3 +122,4 @@ export const notify = async ({
     previewUrl,
   };
 };
+

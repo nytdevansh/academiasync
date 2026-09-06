@@ -40,7 +40,10 @@ export const isNodemailerInstalled = (): boolean => Boolean(nodemailerModule);
 
 export const getEmailTransportMode = (): 'smtp' | 'ethereal' | 'mock_logger' => {
   if (!nodemailerModule) return 'mock_logger';
-  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD) {
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER || process.env.SMTP_USERNAME;
+  const pass = process.env.SMTP_PASSWORD || process.env.SMTP_PASS;
+  if (host && user && pass) {
     return 'smtp';
   }
   return cachedTransportMode;
@@ -48,7 +51,7 @@ export const getEmailTransportMode = (): 'smtp' | 'ethereal' | 'mock_logger' => 
 
 /**
  * Initializes and returns an active email transporter.
- * Uses strict timeouts to guarantee the server never hangs.
+ * Reuses a single pooled Transporter instance at module scope.
  */
 const getTransporter = async (): Promise<any> => {
   if (transporterInitialized) return cachedTransporter;
@@ -61,72 +64,86 @@ const getTransporter = async (): Promise<any> => {
       return null;
     }
 
+    const host = (process.env.SMTP_HOST || '').trim();
+    const user = (process.env.SMTP_USER || process.env.SMTP_USERNAME || '').trim();
+    // Google displays app passwords with spaces (e.g. "abcd efgh ijkl mnop"). Strip any spaces automatically:
+    const rawPass = process.env.SMTP_PASSWORD || process.env.SMTP_PASS || '';
+    const pass = rawPass.replace(/\s+/g, '').trim();
 
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASSWORD;
+    // ── Tier 1: Real Production SMTP Configuration (Gmail, SendGrid, SES, etc.) ──
+    if (host && user && pass) {
 
-  // 1. Production or Explicit SMTP Configuration
-  if (host && user && pass) {
-    try {
-      cachedTransporter = nodemailerModule.createTransport({
-        host,
-        port: Number(process.env.SMTP_PORT || 587),
-        secure: process.env.SMTP_SECURE === 'true',
-        auth: { user, pass },
-        connectionTimeout: 3000,
-        greetingTimeout: 3000,
-        socketTimeout: 4000,
-      });
       cachedTransportMode = 'smtp';
+      try {
+        const port = Number(process.env.SMTP_PORT || (process.env.SMTP_SECURE === 'true' ? 465 : 587));
+        const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+
+        // Pooled connection reuse across multiple emails to eliminate repeated TLS handshakes
+        cachedTransporter = nodemailerModule.createTransport({
+          host,
+          port,
+          secure,
+          auth: { user, pass },
+          pool: true,
+          maxConnections: 5,
+          maxMessages: 100,
+          connectionTimeout: 15000, // 15s to accommodate Gmail TLS handshake
+          greetingTimeout: 15000,   // 15s for SMTP banner greeting
+          socketTimeout: 20000,     // 20s socket timeout
+        });
+
+        transporterInitialized = true;
+        console.log(`📧 [EmailService] Initialized pooled SMTP transporter on ${host}:${port} (secure: ${secure})`);
+        return cachedTransporter;
+      } catch (err: any) {
+        console.error('❌ [EmailService] Failed to create SMTP transporter:', err?.message || err);
+        cachedTransporter = null;
+        transporterInitialized = true;
+        return null;
+      }
+    }
+
+    // ── Tier 2: Local Dev Ethereal Disposable Account (1.5s discovery timeout) ──
+    try {
+      const testAccountPromise = nodemailerModule.createTestAccount();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Ethereal discovery timeout (1500ms)')), 1500)
+      );
+      const testAccount: any = await Promise.race([testAccountPromise, timeoutPromise]);
+
+      cachedTransporter = nodemailerModule.createTransport({
+        host: testAccount.smtp.host,
+        port: testAccount.smtp.port,
+        secure: testAccount.smtp.secure,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+        connectionTimeout: 8000,
+        greetingTimeout: 8000,
+        socketTimeout: 10000,
+      });
+      cachedTransportMode = 'ethereal';
       transporterInitialized = true;
-      console.log(`📧 [EmailService] Initialized SMTP transporter on ${host}`);
+      console.log(`📧 [EmailService] Initialized Ethereal test inbox: ${testAccount.user}`);
       return cachedTransporter;
     } catch (err: any) {
-      console.warn('⚠️  [EmailService] Failed to initialize SMTP transporter:', err?.message);
+      // No SMTP configured and Ethereal unavailable -> Clean fallback to mock preview logger
+      console.log('ℹ️  [EmailService] No SMTP configured in .env (offline/local dev mode), active channel: Console Preview Logger');
+      cachedTransportMode = 'mock_logger';
+      cachedTransporter = null;
+      transporterInitialized = true;
+      return null;
     }
-  }
-
-  // 2. Local Dev: Ethereal Disposable Test Account (with quick 1.5s timeout)
-  try {
-    const testAccountPromise = nodemailerModule.createTestAccount();
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Ethereal test account registration timeout (1500ms)')), 1500)
-    );
-    const testAccount: any = await Promise.race([testAccountPromise, timeoutPromise]);
-
-    cachedTransporter = nodemailerModule.createTransport({
-      host: testAccount.smtp.host,
-      port: testAccount.smtp.port,
-      secure: testAccount.smtp.secure,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-      connectionTimeout: 3000,
-      greetingTimeout: 3000,
-      socketTimeout: 4000,
-    });
-    cachedTransportMode = 'ethereal';
-    transporterInitialized = true;
-    console.log(`📧 [EmailService] Initialized Ethereal test inbox: ${testAccount.user}`);
-    return cachedTransporter;
-  } catch (err: any) {
-    console.log('ℹ️  [EmailService] Ethereal account unavailable (offline/dev mode), using fast mock logger preview:', err?.message);
-    cachedTransportMode = 'mock_logger';
-    cachedTransporter = null;
-    transporterInitialized = true;
-    return null;
-  }
   })();
 
   return initPromise;
 };
 
-
 /**
  * Dispatch an email to a single recipient.
- * Never throws to caller and never hangs — guaranteed fast execution.
+ * If SMTP is configured, performs real delivery and surfaces legitimate errors if it fails.
+ * If SMTP is NOT configured (dev mode), previews in console and returns success.
  */
 export const sendEmail = async ({
   to,
@@ -140,15 +157,25 @@ export const sendEmail = async ({
     }
 
     const fromName = process.env.EMAIL_FROM_NAME || 'AcademiaSync Portal';
-    const fromAddress = process.env.EMAIL_FROM_ADDRESS || 'notifications@academiasync.edu';
+    const fromAddress = process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER || 'notifications@academiasync.edu';
     const from = `"${fromName}" <${fromAddress}>`;
 
     const transporter = await getTransporter();
 
-    // ── Tier 1: Fallback Mock Logger (<1ms, guaranteed never to hang) ──
-    if (!transporter) {
+    // ── Case A: Real SMTP was configured but transporter could not be initialized ──
+    if (!transporter && cachedTransportMode === 'smtp') {
+      const err = 'SMTP host was configured, but connection could not be established. Check SMTP_HOST, port, and credentials in .env.';
+      console.error(`❌ [EmailService] Delivery aborted to "${to}": ${err}`);
+      return {
+        success: false,
+        error: err,
+      };
+    }
+
+    // ── Case B: No SMTP Configured (Local Dev / Offline Mock Logger) ──
+    if (!transporter && cachedTransportMode === 'mock_logger') {
       console.log('\n' + '─'.repeat(70));
-      console.log('📧 [Console Email Preview] (Local Dev / Offline Logger Active)');
+      console.log('📧 [Console Email Preview] (Local Dev / No SMTP Configured in .env)');
       console.log(`   To:      ${to}`);
       console.log(`   From:    ${from}`);
       console.log(`   Subject: ${subject}`);
@@ -162,8 +189,9 @@ export const sendEmail = async ({
       };
     }
 
-    // ── Tier 2 & 3: Real SMTP / Ethereal Sending with 3-second safeguard ──
+    // ── Case C: Active SMTP / Ethereal Transporter Delivery ──
     try {
+      console.log(`📧 [EmailService] Initiating dispatch to "${to}" via ${cachedTransportMode}...`);
       const sendPromise = transporter.sendMail({
         from,
         to,
@@ -171,8 +199,10 @@ export const sendEmail = async ({
         html,
         text: text || html.replace(/<[^>]+>/g, ''),
       });
+
+      // 25-second safeguard timeout for slow Gmail handshakes
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('SMTP sendMail timed out after 3000ms')), 3000)
+        setTimeout(() => reject(new Error('SMTP sendMail timed out after 25000ms. Gmail connection or auth was cut off.')), 25000)
       );
 
       const info: any = await Promise.race([sendPromise, timeoutPromise]);
@@ -184,7 +214,7 @@ export const sendEmail = async ({
           console.log(`📧 [Ethereal Preview URL] ${subject} -> ${previewUrl}`);
         }
       } else {
-        console.log(`📧 [Email Sent] ${subject} -> ${to} (id: ${info.messageId})`);
+        console.log(`✅ [Email Sent Successfully] "${subject}" -> ${to} (id: ${info.messageId})`);
       }
 
       return {
@@ -192,23 +222,22 @@ export const sendEmail = async ({
         messageId: info.messageId,
         previewUrl,
       };
-    } catch (networkErr: any) {
-      // If SMTP network connection hangs or fails, gracefully log preview and succeed without blocking
-      console.warn(`⚠️  [EmailService] SMTP network dispatch failed (${networkErr?.message}), logged to console:`);
-      console.log(`   To: ${to} | Subject: ${subject}`);
+    } catch (deliveryErr: any) {
+      // When real SMTP is configured, do NOT silently swallow errors! Surface the real failure!
+      const errorMsg = deliveryErr?.message || 'SMTP delivery failed';
+      console.error(`❌ [EmailService Error] Real SMTP delivery failed for "${to}":`, errorMsg);
       return {
-        success: true,
-        messageId: `fallback-${Date.now()}`,
-        previewUrl: 'console-preview',
+        success: false,
+        error: errorMsg,
       };
     }
   } catch (err: any) {
-    console.error(`❌ [EmailService Error] Failed to send email "${subject}" to ${to}:`, err?.message || err);
+    console.error(`❌ [EmailService Unexpected Error] Failed to process email "${subject}" to "${to}":`, err?.message || err);
     return {
-      success: true, // Never block caller
+      success: false,
       error: err?.message || 'Email delivery failed',
-      previewUrl: 'console-preview',
     };
   }
 };
+
 
