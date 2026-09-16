@@ -133,7 +133,7 @@ export const PublicNavbar: React.FC = () => {
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-lg shadow-sm"
               >
-                Student / Faculty Login
+                  Faculty Login
               </Link>
             )}
           </div>
