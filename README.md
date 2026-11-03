@@ -33,6 +33,7 @@ AcademiaSync is an institutional-grade faculty enhancement, professional develop
 - [Deployment Guide](#deployment-guide)
   - [Backend on Render](#backend-on-render)
   - [Frontend on Vercel](#frontend-on-vercel)
+  - [Frontend on Netlify](#frontend-on-netlify)
 - [Testing & Verification](#testing--verification)
   - [Automated Pipeline Test Suite](#automated-pipeline-test-suite-npm-test)
   - [Concurrency & Security Tests](#concurrency--security-tests)
@@ -528,6 +529,19 @@ The frontend includes `frontend/my-app/vercel.json` for SPA HTML5 client-side ro
    VITE_API_URL=https://your-backend-api.onrender.com/api/v1
    ```
 4. Deploy.
+
+### Frontend on Netlify
+
+The frontend includes `frontend/my-app/public/_redirects` so Netlify serves the SPA entry point for client-side routes and page refreshes.
+
+1. In the **Netlify Dashboard**, import the repository.
+2. Set the **Base directory** to `frontend/my-app`.
+3. Set the **Build command** to `npm run build` and the **Publish directory** to `dist`.
+4. Configure the environment variable:
+   ```text
+   VITE_API_URL=https://your-backend-api.onrender.com/api/v1
+   ```
+5. Deploy.
 
 ---
 
