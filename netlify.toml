@@ -1,0 +1,14 @@
+# The deployable frontend (Vite + React SPA) lives in a sub-folder of this repo.
+# Without these settings Netlify publishes the repo root, which has no index.html,
+# so every URL returns a 404.
+[build]
+  base = "frontend/my-app"
+  command = "npm ci --include=dev && npm run build"
+  publish = "dist"
+
+# SPA fallback: let React Router handle client-side routes on refresh/deep links.
+# (Mirrors frontend/my-app/public/_redirects.)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
