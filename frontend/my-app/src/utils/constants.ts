@@ -200,9 +200,11 @@ export const NAV_SECTIONS = {
 export const CHART_COLORS = ['#2563EB', '#0F766E', '#14B8A6', '#D97706', '#16A34A', '#8B5CF6', '#F43F5E'];
 
 export const DEMO_CREDENTIALS = [
-  { email: 'admin@academiasync.edu', password: 'Admin@123', role: 'Administrator' },
-  { email: 'hod.cse@academiasync.edu', password: 'Hod@123', role: 'HOD (CSE)' },
-  { email: 'dean@academiasync.edu', password: 'Dean@123', role: 'Dean' },
-  { email: 'hr@academiasync.edu', password: 'Hr@123', role: 'HR' },
-  { email: 'faculty@academiasync.edu', password: 'Faculty@123', role: 'Faculty' },
+  { email: 'admin@academiasync.edu', password: 'Admin@123', role: 'Administrator', userRole: 'administrator' },
+  { email: 'hod.cse@academiasync.edu', password: 'Hod@123', role: 'HOD (CSE)', userRole: 'hod' },
+  { email: 'hod.ece@academiasync.edu', password: 'Hod@123', role: 'HOD (ECE)', userRole: 'hod' },
+  { email: 'dean@academiasync.edu', password: 'Dean@123', role: 'Dean', userRole: 'dean' },
+  { email: 'hr@academiasync.edu', password: 'Hr@123', role: 'HR Officer', userRole: 'hr' },
+  { email: 'faculty@academiasync.edu', password: 'Faculty@123', role: 'Faculty (CSE)', userRole: 'faculty_member' },
+  { email: 'faculty2@academiasync.edu', password: 'Faculty@123', role: 'Faculty (ECE)', userRole: 'faculty_member' },
 ];

@@ -58,8 +58,8 @@ export const seedData = async () => {
     { name: 'Fine Arts & Design', code: 'ARTS', description: 'Visual Arts, Product Design' },
   ]);
 
-  // ── Users: Single Administrator ──────────────────────────────────────────────
-  console.log('👤  Seeding single system administrator...');
+  // ── Users: Demo accounts for each supported role ────────────────────────────
+  console.log('👤  Seeding demo accounts for each supported role...');
   const adminHash = await hash('Admin@123');
 
   const [admin] = await User.insertMany([
@@ -71,6 +71,26 @@ export const seedData = async () => {
       department: adminDept._id,
       status: 'active',
     },
+  ]);
+  const [hodCseHash, hodEceHash, deanHash, hrHash, facultyCseHash, facultyEceHash] = await Promise.all([
+    hash('Hod@123'),
+    hash('Hod@123'),
+    hash('Dean@123'),
+    hash('Hr@123'),
+    hash('Faculty@123'),
+    hash('Faculty@123'),
+  ]);
+  const [hodCse, hodEce, dean, hr, facultyCse, facultyEce] = await User.insertMany([
+    { name: 'Dr. Alan Turing', email: 'hod.cse@academiasync.edu', passwordHash: hodCseHash, role: 'hod', department: cse._id },
+    { name: 'Dr. Nikola Tesla', email: 'hod.ece@academiasync.edu', passwordHash: hodEceHash, role: 'hod', department: ece._id },
+    { name: 'Dr. John Doe', email: 'dean@academiasync.edu', passwordHash: deanHash, role: 'dean', department: acadDept._id },
+    { name: 'Alex Morgan', email: 'hr@academiasync.edu', passwordHash: hrHash, role: 'hr', department: hrDept._id },
+    { name: 'Dr. Ada Lovelace', email: 'faculty@academiasync.edu', passwordHash: facultyCseHash, role: 'faculty_member', department: cse._id },
+    { name: 'Dr. Grace Hopper', email: 'faculty2@academiasync.edu', passwordHash: facultyEceHash, role: 'faculty_member', department: ece._id },
+  ]);
+  await Promise.all([
+    Department.updateOne({ _id: cse._id }, { hodRef: hodCse._id }),
+    Department.updateOne({ _id: ece._id }, { hodRef: hodEce._id }),
   ]);
 
   // ── Subjects ─────────────────────────────────────────────────────────────────
@@ -129,6 +149,19 @@ export const seedData = async () => {
     experience: [{ institution: 'AcademiaSync University', role: 'Chief Administrator', fromYear: 2015, isCurrent: true }],
     profileCompleteness: 100,
   });
+  await FacultyProfile.insertMany(
+    [hodCse, hodEce, facultyCse, facultyEce].map((user) => ({
+      userId: user._id,
+      bio: `Demo faculty profile for ${user.name}.`,
+      qualifications: [],
+      experience: [],
+      certifications: [],
+      accomplishments: [],
+      subjectsTaught: [],
+      researchAreas: [],
+      profileCompleteness: 25,
+    }))
+  );
 
   // ── Training Programs ────────────────────────────────────────────────────────
   console.log('🎓  Seeding training programs & course assessments...');
@@ -469,7 +502,7 @@ export const seedData = async () => {
     },
   ]);
 
-  console.log('\n✅ Seed complete! Single administrator initialized with full institutional master directories.\n');
+  console.log('\n✅ Seed complete! Demo accounts for all supported roles and institutional master data initialized.\n');
 };
 
 const runStandalone = async () => {

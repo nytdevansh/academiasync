@@ -38,7 +38,7 @@ export const PublicNavbar: React.FC = () => {
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-1">
+          <nav aria-label="Primary navigation" className="hidden lg:flex items-center gap-1">
             {navLinks.map((link) => (
               <NavLink
                 key={link.path}
@@ -68,11 +68,12 @@ export const PublicNavbar: React.FC = () => {
                   <span>Portal Dashboard</span>
                 </Link>
                 <button
+                  type="button"
                   onClick={() => {
                     logout();
                     navigate('/');
                   }}
-                  title="Sign Out"
+                  aria-label="Sign out"
                   className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
@@ -84,7 +85,7 @@ export const PublicNavbar: React.FC = () => {
                 className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm hover:shadow transition-all active:scale-[0.99]"
               >
                 <Shield className="w-4 h-4" />
-                <span>Faculty / Student Login</span>
+                <span>Faculty &amp; Staff Login</span>
               </Link>
             )}
           </div>
@@ -92,8 +93,12 @@ export const PublicNavbar: React.FC = () => {
           {/* Mobile menu button */}
           <div className="flex lg:hidden">
             <button
+              type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
+              aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="public-mobile-menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -103,7 +108,7 @@ export const PublicNavbar: React.FC = () => {
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-white border-b border-slate-200 px-4 pt-2 pb-6 space-y-2 animate-fadeIn">
+        <nav id="public-mobile-menu" aria-label="Mobile navigation" className="lg:hidden bg-white border-b border-slate-200 px-4 pt-2 pb-6 space-y-2 animate-fadeIn">
           {navLinks.map((link) => (
             <NavLink
               key={link.path}
@@ -133,11 +138,11 @@ export const PublicNavbar: React.FC = () => {
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-lg shadow-sm"
               >
-                  Faculty Login
+                Faculty &amp; Staff Login
               </Link>
             )}
           </div>
-        </div>
+        </nav>
       )}
     </header>
   );

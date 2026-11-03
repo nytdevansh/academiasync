@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/layout/Layout';
@@ -47,6 +47,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 const App: React.FC = () => (
   <AuthProvider>
     <BrowserRouter>
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <Routes>
         {/* Public Campus Website Routes */}
         <Route element={<PublicLayout />}>
@@ -62,7 +63,7 @@ const App: React.FC = () => (
         </Route>
 
         {/* Public Cryptographic Certificate Verification */}
-        <Route path="/verify/:token" element={<CertificateVerificationPage />} />
+        <Route path="/verify/:token" element={<main id="main-content" tabIndex={-1}><CertificateVerificationPage /></main>} />
 
         {/* Authentication */}
         <Route path="/login" element={<LoginPage />} />
@@ -113,4 +114,3 @@ const App: React.FC = () => (
 );
 
 export default App;
-

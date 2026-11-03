@@ -7,7 +7,7 @@ export const PublicLayout: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col selection:bg-blue-100 selection:text-blue-900 font-sans">
       <PublicNavbar />
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1">
         <Outlet />
       </main>
       <PublicFooter />

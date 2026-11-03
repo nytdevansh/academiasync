@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import type { User, UserRole } from '../types';
+import type { User } from '../types';
 import { getMe, refreshToken as apiRefreshToken, login as apiLogin, logout as apiLogout } from '../api/auth';
 import { DEMO_CREDENTIALS } from '../utils/constants';
 
@@ -133,11 +133,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Quick Login for testing with backend validation
   const quickLogin = async (roleKey: string): Promise<User> => {
-    setIsLoading(true);
     const cred = DEMO_CREDENTIALS.find(d => 
-      d.role.toLowerCase().includes(roleKey.toLowerCase()) || 
-      d.email.toLowerCase().includes(roleKey.toLowerCase())
-    ) || DEMO_CREDENTIALS[0];
+      d.userRole === roleKey.toLowerCase() ||
+      d.role.toLowerCase() === roleKey.toLowerCase() ||
+      d.email.toLowerCase() === roleKey.toLowerCase()
+    );
+    if (!cred) throw new Error(`No demo account is configured for "${roleKey}".`);
+
+    setIsLoading(true);
 
     try {
       const res: any = await apiLogin(cred.email, cred.password);

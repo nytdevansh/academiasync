@@ -237,6 +237,8 @@ Access the application in your browser at `http://localhost:5173`.
 
 When connecting to a fresh database with no user records, the backend **automatically seeds** default departments, subjects, faculty profiles, and demo accounts.
 
+Automatic seeding only runs when the database has no users. For an already populated database, the demo accounts will not be added automatically; the manual seed command below resets the seed collections.
+
 To manually re-seed or reset demo data:
 
 ```bash
@@ -245,9 +247,11 @@ npm run seed
 ```
 
 > [!CAUTION]
-> Running `npm run seed` drops and recreates seed collections. Never execute against a production database.
+> Running `npm run seed` drops and recreates seed collections, including the demo accounts below. Never execute against a production database.
 
 ### Preconfigured Demo Credentials
+
+The login page displays these shared credentials and can fill the sign-in form for you. They work after the backend database has been seeded with `npm run seed`.
 
 | Role | Email | Password | Scope & Privileges |
 | :--- | :--- | :--- | :--- |

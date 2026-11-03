@@ -68,8 +68,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ open = false, onClose }) => {
       )}
 
       <aside
+        id="portal-sidebar"
+        aria-label="Portal navigation sidebar"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') onClose?.();
+        }}
         className={`w-64 bg-white border-r border-slate-200 flex flex-col h-screen fixed top-0 left-0 z-40 shadow-xl lg:shadow-xs transition-transform duration-300 ease-in-out ${
-          open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          open ? 'translate-x-0 visible' : '-translate-x-full invisible lg:translate-x-0 lg:visible'
         }`}
       >
         {/* Header / Logo */}
@@ -112,7 +117,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ open = false, onClose }) => {
         </div>
 
         {/* Navigation Sections */}
-        <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-4">
+        <nav aria-label="Portal navigation" className="flex-1 px-3 py-3 overflow-y-auto space-y-4">
           {sections.map((section: any) => (
             <div key={section.label}>
               <div className="px-3 mb-1 text-[11px] font-bold tracking-wider text-slate-500 uppercase">
@@ -151,7 +156,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ open = false, onClose }) => {
           </div>
           <button
             onClick={handleLogout}
-            title="Sign Out"
+            type="button"
+            aria-label="Sign out"
             className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
